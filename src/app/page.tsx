@@ -18,7 +18,7 @@ export default function Home() {
           </a>
           <a
             className="bg-mantle text-base font-bold rounded-md px-4 py-2 hover:border-sapphire border-2 border-transparent"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
+            href="/search"
             target="_blank"
             rel="noopener noreferrer"
           >
