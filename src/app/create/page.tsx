@@ -1,6 +1,17 @@
+"use client";
+import { useRouter } from "next/navigation";
 import React from "react";
 
 export default function CreateBoxPage() {
+  const router = useRouter();
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+    const boxName = formData.get("boxName");
+    const boxPassword = formData.get("boxPassword");
+    console.log(boxName, boxPassword);
+    router.push(`/${boxName}`);
+  };
   return (
     <div className="grid grid-rows-[1.5rem_1fr_0.1fr] grid-cols-[1fr_0.2fr] items-center justify-items-center sm:justify-items-start min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-mono)] ">
       <h2 className="text-2xl">Create a new Box</h2>
@@ -9,6 +20,7 @@ export default function CreateBoxPage() {
         action=""
         method="post"
         className="row-span-2 h-full grid grid-rows-subgrid w-full items-center justify-items-center sm:justify-items-start"
+        onSubmit={handleSubmit}
       >
         <div className="flex flex-col space-y-2 w-fit h-fit">
           <label htmlFor="boxName">Box Name</label>
