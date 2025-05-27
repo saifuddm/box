@@ -26,10 +26,13 @@ export default function BoxPage() {
   const title = selectedCount > 0 ? `Selected Box: ${selectedCount}` : "Box";
 
   return (
-    <div className="grid grid-rows-[1.5rem_1fr_0.1fr] grid-cols-[1fr_0.2fr] items-center justify-items-center sm:justify-items-start min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-mono)] ">
+    <div className="grid grid-rows-[1.5rem_1rem_0.1fr_1fr] md:grid-rows-[1.5rem_1fr_0.1fr] md:grid-cols-[1fr_0.2fr] items-center justify-items-center md:justify-items-start min-h-screen p-8 pb-20 gap-4 md:gap-16 sm:p-20 font-[family-name:var(--font-geist-mono)] ">
       <h2 className="text-2xl">{title}</h2>
       <p className="text-sm">ID: {pathname}</p>
-      <div id="content" className="grid grid-cols-3 gap-2 h-full items-start">
+      <div
+        id="content"
+        className="grid grid-cols-1 md:grid-cols-3 gap-2 h-full items-start"
+      >
         <div className="flex flex-col gap-2">
           <div
             id="example-content"
@@ -156,7 +159,10 @@ export default function BoxPage() {
           </div>
         </div>
       </div>
-      <div id="actions" className="flex space-y-2 flex-col items-start">
+      <div
+        id="actions"
+        className="flex gap-2 md:flex-col row-start-3 md:row-start-auto self-start"
+      >
         <button className="cursor-pointer bg-surface0 text-base font-bold rounded-md px-4 py-2 hover:border-sapphire border-2 border-transparent">
           Add
         </button>
