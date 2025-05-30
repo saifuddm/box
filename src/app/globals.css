@@ -1,38 +1,230 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
 
 :root {
+  /* Catppuccin Latte (Light Theme) */
   --base: #eff1f5;
   --text: #4c4f69;
-  --surface0: #ccd0da;
+  --subtext1: #5c5f77;
+  --subtext0: #6c6f85;
+  --overlay2: #7c7f93;
+  --overlay1: #8c8fa1;
+  --overlay0: #9ca0b0;
+  --surface2: #acb0be;
   --surface1: #bcc0cc;
+  --surface0: #ccd0da;
   --mantle: #e6e9ef;
+  --crust: #dce0e8;
+
+  /* Catppuccin Latte Colors */
+  --rosewater: #dc8a78;
+  --flamingo: #dd7878;
+  --pink: #ea76cb;
+  --mauve: #8839ef;
+  --red: #d20f39;
+  --maroon: #e64553;
+  --peach: #fe640b;
+  --yellow: #df8e1d;
+  --green: #40a02b;
+  --teal: #179299;
+  --sky: #04a5e5;
   --sapphire: #209fb5;
+  --blue: #1e66f5;
+  --lavender: #7287fd;
+
+  --radius: 0.625rem;
+
+  /* shadcn/ui colors mapped to Catppuccin Latte */
+  --background: var(--base);
+  --foreground: var(--text);
+  --card: var(--surface0);
+  --card-foreground: var(--text);
+  --popover: var(--surface0);
+  --popover-foreground: var(--text);
+  --primary: var(--mauve);
+  --primary-foreground: var(--base);
+  --secondary: var(--surface1);
+  --secondary-foreground: var(--text);
+  --muted: var(--surface1);
+  --muted-foreground: var(--subtext1);
+  --accent: var(--surface2);
+  --accent-foreground: var(--text);
+  --destructive: var(--red);
+  --destructive-foreground: var(--base);
+  --border: var(--surface1);
+  --input: var(--surface0);
+  --ring: var(--sapphire);
+
+  /* Chart colors */
+  --chart-1: var(--blue);
+  --chart-2: var(--green);
+  --chart-3: var(--yellow);
+  --chart-4: var(--red);
+  --chart-5: var(--mauve);
+
+  /* Sidebar colors */
+  --sidebar: var(--mantle);
+  --sidebar-foreground: var(--text);
+  --sidebar-primary: var(--mauve);
+  --sidebar-primary-foreground: var(--base);
+  --sidebar-accent: var(--surface1);
+  --sidebar-accent-foreground: var(--text);
+  --sidebar-border: var(--surface1);
+  --sidebar-ring: var(--sapphire);
 }
 
 @theme inline {
-  --color-background: var(--base);
-  --color-foreground: var(--text);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
   --color-surface0: var(--surface0);
   --color-surface1: var(--surface1);
+  --color-surface2: var(--surface2);
   --color-mantle: var(--mantle);
+  --color-crust: var(--crust);
   --color-sapphire: var(--sapphire);
+  --color-mauve: var(--mauve);
+  --color-blue: var(--blue);
+  --color-green: var(--green);
+  --color-yellow: var(--yellow);
+  --color-red: var(--red);
+  --color-pink: var(--pink);
+  --color-teal: var(--teal);
+  --color-sky: var(--sky);
+  --color-lavender: var(--lavender);
+  --color-peach: var(--peach);
+  --color-maroon: var(--maroon);
+  --color-flamingo: var(--flamingo);
+  --color-rosewater: var(--rosewater);
+  --color-text: var(--text);
+  --color-subtext1: var(--subtext1);
+  --color-subtext0: var(--subtext0);
+  --color-overlay2: var(--overlay2);
+  --color-overlay1: var(--overlay1);
+  --color-overlay0: var(--overlay0);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
+    /* Catppuccin Macchiato (Dark Theme) */
     --base: #24273a;
     --text: #cad3f5;
-    --surface0: #363a4f;
+    --subtext1: #b8c0e0;
+    --subtext0: #a5adcb;
+    --overlay2: #939ab7;
+    --overlay1: #8087a2;
+    --overlay0: #6e738d;
+    --surface2: #5b6078;
     --surface1: #494d64;
+    --surface0: #363a4f;
     --mantle: #1e2030;
+    --crust: #181926;
+
+    /* Catppuccin Macchiato Colors */
+    --rosewater: #f4dbd6;
+    --flamingo: #f0c6c6;
+    --pink: #f5bde6;
+    --mauve: #c6a0f6;
+    --red: #ed8796;
+    --maroon: #ee99a0;
+    --peach: #f5a97f;
+    --yellow: #eed49f;
+    --green: #a6da95;
+    --teal: #8bd5ca;
+    --sky: #91d7e3;
     --sapphire: #7dc4e4;
+    --blue: #8aadf4;
+    --lavender: #b7bdf8;
   }
 }
 
 body {
-  background: var(--base);
-  color: var(--text);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.dark {
+  /* shadcn/ui colors mapped to Catppuccin Macchiato */
+  --background: var(--base);
+  --foreground: var(--text);
+  --card: var(--surface0);
+  --card-foreground: var(--text);
+  --popover: var(--surface0);
+  --popover-foreground: var(--text);
+  --primary: var(--mauve);
+  --primary-foreground: var(--base);
+  --secondary: var(--surface1);
+  --secondary-foreground: var(--text);
+  --muted: var(--surface1);
+  --muted-foreground: var(--subtext1);
+  --accent: var(--surface2);
+  --accent-foreground: var(--text);
+  --destructive: var(--red);
+  --destructive-foreground: var(--base);
+  --border: var(--surface1);
+  --input: var(--surface0);
+  --ring: var(--sapphire);
+
+  /* Chart colors for dark theme */
+  --chart-1: var(--blue);
+  --chart-2: var(--green);
+  --chart-3: var(--yellow);
+  --chart-4: var(--red);
+  --chart-5: var(--mauve);
+
+  /* Sidebar colors for dark theme */
+  --sidebar: var(--mantle);
+  --sidebar-foreground: var(--text);
+  --sidebar-primary: var(--mauve);
+  --sidebar-primary-foreground: var(--base);
+  --sidebar-accent: var(--surface1);
+  --sidebar-accent-foreground: var(--text);
+  --sidebar-border: var(--surface1);
+  --sidebar-ring: var(--sapphire);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }
