@@ -13,33 +13,58 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import InsertContentComponent from "@/components/InsertContentComponent";
+import { Button } from "@/components/ui/button";
+import TextContent from "@/components/content/TextContent";
+import ImageContent from "@/components/content/ImageContent";
 
 export default function BoxPage() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const id = searchParams.get("id");
 
   const [selectedBoxes, setSelectedBoxes] = useState<Set<string>>(new Set());
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [content, setContent] = useState<
+    {
+      id: string;
+      content: string;
+      type: "text" | "image" | "empty";
+      file?: File;
+    }[]
+  >([]);
 
-  const handleCheckboxChange = (boxId: string, isChecked: boolean) => {
+  const handleCheckboxChange = (contentId: string, isChecked: boolean) => {
     setSelectedBoxes((prev) => {
       const newSet = new Set(prev);
       if (isChecked) {
-        newSet.add(boxId);
+        newSet.add(contentId);
       } else {
-        newSet.delete(boxId);
+        newSet.delete(contentId);
       }
       return newSet;
     });
   };
 
   const handleContentSubmit = (content: {
-    type: "text" | "image";
-    data: string;
+    type: "text" | "image" | "empty";
+    data: string | null;
     file?: File;
   }) => {
     console.log("Content submitted:", content);
+
+    if (content.type === "empty" || !content.data) {
+      // Close the drawer when empty content is submitted
+      setIsDrawerOpen(false);
+      return;
+    }
+
+    const newContent = {
+      id: crypto.randomUUID(),
+      content: content.data,
+      type: content.type,
+      file: content.file,
+    };
+
+    setContent((prev) => [...prev, newContent]);
+
     // TODO: Add logic to save the content to the box
     // For now, just close the drawer
     setIsDrawerOpen(false);
@@ -48,6 +73,59 @@ export default function BoxPage() {
   const handleDrawerClose = () => {
     setIsDrawerOpen(false);
   };
+
+  const handleDelete = () => {
+    // Filter out the selected content items
+    setContent((prev) => prev.filter((item) => !selectedBoxes.has(item.id)));
+    // Clear the selected boxes after deletion
+    setSelectedBoxes(new Set());
+  };
+
+  function renderContent() {
+    // Create 3 columns to distribute content
+    const columns: React.ReactElement[][] = [[], [], []];
+
+    // Distribute content items across columns in round-robin fashion
+    content.forEach((item, index) => {
+      const columnIndex = index % 3;
+
+      let contentElement: React.ReactElement;
+
+      if (item.type === "text") {
+        contentElement = (
+          <TextContent
+            key={item.id}
+            id={item.id}
+            content={item.content}
+            handleCheckboxChange={handleCheckboxChange}
+          />
+        );
+      } else if (item.type === "image") {
+        contentElement = (
+          <ImageContent
+            key={item.id}
+            id={item.id}
+            src={item.file ? URL.createObjectURL(item.file) : item.content}
+            alt={item.file ? item.file.name : item.content}
+            handleCheckboxChange={handleCheckboxChange}
+          />
+        );
+      } else {
+        return; // Skip empty content
+      }
+
+      columns[columnIndex].push(contentElement);
+    });
+
+    // Render the 3 columns
+    return (
+      <>
+        <div className="flex flex-col gap-2">{columns[0]}</div>
+        <div className="flex flex-col gap-2">{columns[1]}</div>
+        <div className="flex flex-col gap-2">{columns[2]}</div>
+      </>
+    );
+  }
 
   const selectedCount = selectedBoxes.size;
   const title = selectedCount > 0 ? `Selected Box: ${selectedCount}` : "Box";
@@ -60,135 +138,7 @@ export default function BoxPage() {
         id="content"
         className="grid grid-cols-1 md:grid-cols-3 gap-2 h-full items-start"
       >
-        <div className="flex flex-col gap-2">
-          <div
-            id="example-content"
-            className="bg-card border border-border rounded-md p-2 h-min"
-          >
-            <div className="overflow-y-auto">
-              <p className="text-card-foreground">Example Content</p>
-            </div>
-            <div id="selector" className="flex justify-between mt-2">
-              <input
-                type="checkbox"
-                name="selector"
-                id="selector"
-                className="accent-primary"
-                onChange={(e) =>
-                  handleCheckboxChange("selector", e.target.checked)
-                }
-              />
-              <Clipboard
-                className="w-4 h-4 cursor-pointer hover:text-primary transition-colors"
-                onClick={() => {
-                  navigator.clipboard.writeText("example content");
-                }}
-              />
-            </div>
-          </div>
-          <div
-            id="example-content-4"
-            className="bg-card border border-border rounded-md p-2 h-min"
-          >
-            <div className="overflow-y-auto">
-              <p className="text-card-foreground">
-                Lorem, ipsum dolor sit amet consectetur adipisicing elit.
-                Officia nisi architecto sed perferendis, eaque, nemo illo
-                debitis aliquam dolore, corporis delectus maiores voluptatum
-                deserunt facilis earum asperiores. Quae, culpa ratione?
-              </p>
-            </div>
-
-            <div id="selector-4" className="flex justify-between mt-2">
-              <input
-                type="checkbox"
-                name="selector-4"
-                id="selector-4"
-                className="accent-primary"
-                onChange={(e) =>
-                  handleCheckboxChange("selector-4", e.target.checked)
-                }
-              />
-              <Clipboard
-                className="w-4 h-4 cursor-pointer hover:text-primary transition-colors"
-                onClick={() => {
-                  navigator.clipboard.writeText("example content");
-                }}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <div
-            id="example-content-2"
-            className="bg-card border border-border rounded-md p-2 h-min"
-          >
-            <div className="overflow-y-auto">
-              <img
-                src="https://yt3.googleusercontent.com/KVjptxDSWT7rjVfGax2TgTNVAYgplgo1z_fwaV3MFjPpcmNVZC0TIgQV030BPJ0ybCP3_Fz-2w=s900-c-k-c0x00ffffff-no-rj"
-                alt="example"
-                className="object-cover"
-              />
-            </div>
-            <div id="selector-2" className="flex justify-between mt-2">
-              <input
-                type="checkbox"
-                name="selector-2"
-                id="selector-2"
-                className="accent-primary"
-                onChange={(e) =>
-                  handleCheckboxChange("selector-2", e.target.checked)
-                }
-              />
-              <Clipboard
-                className="w-4 h-4 cursor-pointer hover:text-primary transition-colors"
-                onClick={() => {
-                  navigator.clipboard.writeText("example content");
-                }}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <div
-            id="example-content-3"
-            className="bg-card border border-border rounded-md p-2 h-min"
-          >
-            <div className="overflow-y-auto">
-              <p className="text-card-foreground">
-                Lorem ipsum dolor sit, amet consectetur adipisicing elit.
-                Voluptatibus sint dicta placeat error delectus eius est
-                recusandae quidem fugit ea voluptatum nesciunt cumque ratione
-                facere, consectetur quo temporibus aut quaerat. Lorem ipsum
-                dolor sit amet consectetur adipisicing elit. Nam illo nobis eos
-                laudantium reiciendis consectetur sapiente aspernatur iste neque
-                enim, eum sed unde voluptatum, pariatur impedit, deleniti rem
-                illum? Unde. Lorem ipsum dolor sit amet consectetur adipisicing
-                elit. Quisquam, quos.
-              </p>
-            </div>
-
-            <div id="selector-3" className="flex justify-between mt-2">
-              <input
-                type="checkbox"
-                name="selector-3"
-                id="selector-3"
-                className="accent-primary"
-                onChange={(e) =>
-                  handleCheckboxChange("selector-3", e.target.checked)
-                }
-              />
-              <Clipboard
-                className="w-4 h-4 cursor-pointer hover:text-primary transition-colors"
-                onClick={() => {
-                  navigator.clipboard.writeText("example content");
-                }}
-              />
-            </div>
-          </div>
-        </div>
+        {renderContent()}
       </div>
       <div
         id="actions"
@@ -196,11 +146,9 @@ export default function BoxPage() {
       >
         <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
           <DrawerTrigger asChild>
-            <button className="cursor-pointer bg-card text-card-foreground font-bold rounded-md px-4 py-2 hover:border-primary border-2 border-transparent transition-colors">
-              Add
-            </button>
+            <Button className="cursor-pointer">Add</Button>
           </DrawerTrigger>
-          <DrawerContent className="max-h-[85vh]">
+          <DrawerContent>
             <DrawerHeader>
               <DrawerTitle>Add New Content</DrawerTitle>
               <DrawerDescription>
@@ -215,18 +163,21 @@ export default function BoxPage() {
             </div>
           </DrawerContent>
         </Drawer>
-        <button
-          className="bg-muted text-muted-foreground font-bold rounded-md px-4 py-2 hover:border-primary border-2 border-transparent transition-colors"
-          disabled
+        {/* <Button
+          disabled={selectedBoxes.size === 0}
+          variant="outline"
+          className="cursor-pointer"
         >
           Edit
-        </button>
-        <button
-          className="bg-muted text-muted-foreground font-bold rounded-md px-4 py-2 hover:border-primary border-2 border-transparent transition-colors"
-          disabled={true}
+        </Button> */}
+        <Button
+          variant="destructive"
+          className="cursor-pointer"
+          disabled={selectedBoxes.size === 0}
+          onClick={handleDelete}
         >
           Delete
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 "use client";
+import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import React from "react";
 
@@ -29,7 +30,7 @@ export default function CreateBoxPage() {
             type="text"
             name="boxName"
             placeholder="my-cool-box"
-            className="border-b-2 border-primary bg-transparent outline-none mb-6 text-foreground placeholder:text-muted-foreground"
+            className="border-b-2 border-primary bg-transparent outline-none mb-6 text-foreground placeholder:text-muted-foreground placeholder:opacity-50"
             required
           />
           <label htmlFor="boxPassword" className="text-foreground">
@@ -40,15 +41,13 @@ export default function CreateBoxPage() {
             name="password"
             id="password"
             placeholder="Password"
-            className="border-b-2 border-primary bg-transparent outline-none text-foreground placeholder:text-muted-foreground"
+            className="border-b-2 border-primary bg-transparent outline-none text-foreground placeholder:text-muted-foreground placeholder:opacity-50"
           />
         </div>
-        <button
-          type="submit"
-          className="hover:cursor-pointer bg-card text-card-foreground font-bold rounded-md px-4 py-2 hover:border-primary border-2 border-transparent transition-colors w-full md:w-fit"
-        >
+
+        <Button type="submit" className="cursor-pointer">
           Create Box
-        </button>
+        </Button>
       </form>
       <div className="text-sm self-start text-muted-foreground">
         <p className="md:hidden">Options</p>
