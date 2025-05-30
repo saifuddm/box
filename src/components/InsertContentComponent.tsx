@@ -4,12 +4,23 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Clipboard, Upload, Image as ImageIcon, X } from "lucide-react";
+import { Clipboard, Upload, Image as ImageIcon, X, Plus } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 interface InsertContentComponentProps {
   onSubmit?: (content: {
-    type: "text" | "image";
-    data: string;
+    type: "text" | "image" | "empty";
+    data: string | null;
     file?: File;
   }) => void;
   onClose?: () => void;
@@ -22,6 +33,7 @@ export default function InsertContentComponent({
   const [textContent, setTextContent] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showEmptyContentDialog, setShowEmptyContentDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handlePasteText = async () => {
@@ -107,8 +119,21 @@ export default function InsertContentComponent({
         data: textContent.trim(),
       });
     } else {
-      alert("Please add some content before submitting");
+      // Show alert dialog when no content
+      setShowEmptyContentDialog(true);
     }
+  };
+
+  const handleEmptyContentCancel = () => {
+    setShowEmptyContentDialog(false);
+    onSubmit?.({
+      type: "empty",
+      data: null,
+    });
+  };
+
+  const handleEmptyContentContinue = () => {
+    setShowEmptyContentDialog(false);
   };
 
   const handleClear = () => {
@@ -149,14 +174,16 @@ export default function InsertContentComponent({
           className="min-h-[100px] resize-none"
           disabled={!!imagePreview}
         />
-        <button
+
+        <Button
           onClick={handlePasteText}
           disabled={!!imagePreview}
-          className="w-full cursor-pointer bg-card text-card-foreground font-bold rounded-md px-4 py-2 hover:border-primary border-2 border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          variant="secondary"
+          className="cursor-pointer w-full"
         >
-          <Clipboard className="w-4 h-4 mr-2 inline" />
+          <Clipboard />
           Paste Text from Clipboard
-        </button>
+        </Button>
       </div>
 
       {/* Divider */}
@@ -178,13 +205,15 @@ export default function InsertContentComponent({
         {imagePreview ? (
           <div className="space-y-2">
             <div className="relative border border-border rounded-md p-2 bg-card">
-              <button
+              <Button
                 onClick={handleRemoveImage}
-                className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-full hover:bg-destructive/90 transition-colors cursor-pointer"
+                variant="destructive"
+                size="icon"
+                className="absolute top-1 right-1 p-1 rounded-full cursor-pointer"
                 aria-label="Remove image"
               >
-                <X className="w-3 h-3" />
-              </button>
+                <X />
+              </Button>
               <img
                 src={imagePreview}
                 alt="Preview"
@@ -197,22 +226,24 @@ export default function InsertContentComponent({
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2">
-            <button
+            <Button
               onClick={handlePasteImage}
               disabled={!!textContent.trim()}
-              className="h-auto py-3 flex-col cursor-pointer bg-card text-card-foreground font-bold rounded-md px-4 hover:border-primary border-2 border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              variant="secondary"
+              className="h-auto py-3 flex-col cursor-pointer flex items-center justify-center"
             >
-              <Clipboard className="w-4 h-4 mb-1" />
-              <span className="text-xs">Paste Image</span>
-            </button>
-            <button
+              <Clipboard />
+              Paste Image
+            </Button>
+            <Button
               onClick={handleUploadClick}
               disabled={!!textContent.trim()}
-              className="h-auto py-3 flex-col cursor-pointer bg-card text-card-foreground font-bold rounded-md px-4 hover:border-primary border-2 border-transparent transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              variant="secondary"
+              className="h-auto py-3 flex-col cursor-pointer flex items-center justify-center"
             >
-              <Upload className="w-4 h-4 mb-1" />
-              <span className="text-xs">Upload Image</span>
-            </button>
+              <Upload />
+              Upload Image
+            </Button>
           </div>
         )}
 
@@ -229,15 +260,39 @@ export default function InsertContentComponent({
       {/* Action Buttons */}
       <div className="flex gap-2 pt-2">
         <Button onClick={handleSubmit} className="flex-1 cursor-pointer">
-          <ImageIcon className="w-4 h-4 mr-2" />
+          <Plus />
           Add Content
         </Button>
-        <button
+
+        <AlertDialog
+          open={showEmptyContentDialog}
+          onOpenChange={setShowEmptyContentDialog}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Empty Content</AlertDialogTitle>
+              <AlertDialogDescription>
+                Please add some content before submitting.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={handleEmptyContentCancel}>
+                Go back to Box
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={handleEmptyContentContinue}>
+                Add Content
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <Button
           onClick={handleCloseOrClear}
-          className="cursor-pointer bg-card text-card-foreground font-bold rounded-md px-4 py-2 hover:border-primary border-2 border-transparent transition-colors"
+          variant={hasContent ? "destructive" : "outline"}
+          className="cursor-pointer "
         >
           {hasContent ? "Clear" : "Close"}
-        </button>
+        </Button>
       </div>
     </div>
   );

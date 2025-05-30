@@ -1,3 +1,6 @@
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+
 export default function Home() {
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
@@ -10,34 +13,20 @@ export default function Home() {
         </div>
 
         <div className="flex gap-4 items-center flex-col sm:flex-row w-full justify-center">
-          <a
-            className="bg-card text-card-foreground font-bold rounded-md px-4 py-2 hover:border-primary border-2 border-transparent transition-colors"
-            href="/create"
-          >
-            Create Box
-          </a>
-          <a
-            className="bg-muted text-muted-foreground font-bold rounded-md px-4 py-2 hover:border-primary border-2 border-transparent transition-colors"
-            href="/search"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Search Box
-          </a>
+          <Button asChild variant="default">
+            <Link href="/create">Create Box</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/search">Search Box</Link>
+          </Button>
         </div>
       </main>
-      <footer className="row-start-3 flex flex-wrap items-center justify-center">
-        <p className="text-muted-foreground">
-          Made with ❤️ by{" "}
-          <a
-            className="inline-flex hover:underline hover:underline-offset-4 text-primary"
-            href="https://github.com/saifuddm"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            saifuddm
-          </a>
-        </p>
+      <footer className="row-start-3 flex items-center gap-2">
+        <p className="text-muted-foreground">Made with ❤️ by</p>
+
+        <Button asChild variant="outline">
+          <Link href="https://github.com/saifuddm">saifuddm</Link>
+        </Button>
       </footer>
     </div>
   );
