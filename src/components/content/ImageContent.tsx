@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { createClient } from "@/lib/supabase/client";
 import Image from "next/image";
+import { copyImageToClipboard } from "@/utils/imageClipboard";
 
 interface ImageContentProps {
   id: string;
@@ -22,6 +23,7 @@ function ImageContent({
   const [sourceUrl, setSourceUrl] = useState<string>(src);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isCopying, setIsCopying] = useState(false);
 
   async function getSignedUrl() {
     try {
@@ -42,6 +44,24 @@ function ImageContent({
     } finally {
       setIsLoading(false);
     }
+  }
+
+  async function handleCopyImage() {
+    setIsCopying(true);
+
+    const success = await copyImageToClipboard(sourceUrl, {
+      onSuccess: () => {
+        console.log("Image copied successfully");
+      },
+      onError: (error) => {
+        console.error("Copy failed:", error.message);
+      },
+      onFallback: () => {
+        console.log("Fallback: Image URL copied instead");
+      },
+    });
+
+    setIsCopying(false);
   }
 
   useEffect(() => {
@@ -95,11 +115,14 @@ function ImageContent({
           variant="outline"
           size="icon"
           className="w-4 h-4 cursor-pointer hover:text-primary transition-colors"
-          onClick={() => {
-            navigator.clipboard.writeText(src);
-          }}
+          onClick={handleCopyImage}
+          disabled={isCopying || isLoading}
         >
-          <ClipboardIcon />
+          {isCopying ? (
+            <Loader2 className="w-3 h-3 animate-spin" />
+          ) : (
+            <ClipboardIcon />
+          )}
         </Button>
       </div>
     </div>
