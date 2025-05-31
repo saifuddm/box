@@ -317,3 +317,14 @@ entrypoint = "./functions/create-box/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/create-box/*.html" ]
+
+[functions.get-box-content]
+enabled = true
+verify_jwt = true
+import_map = "./functions/get-box-content/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/get-box-content/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/get-box-content/*.html" ]
