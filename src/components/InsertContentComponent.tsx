@@ -4,10 +4,10 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Clipboard, Upload, Image as ImageIcon, X, Plus } from "lucide-react";
+import { Clipboard, Upload, X, Plus } from "lucide-react";
+import Image from "next/image";
 import {
   AlertDialog,
-  AlertDialogTrigger,
   AlertDialogContent,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -214,9 +214,12 @@ export default function InsertContentComponent({
               >
                 <X />
               </Button>
-              <img
+              <Image
                 src={imagePreview}
                 alt="Preview"
+                width={0}
+                height={0}
+                sizes="100vw"
                 className="w-full max-h-32 object-contain rounded"
               />
             </div>

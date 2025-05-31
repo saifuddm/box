@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import TextContent from "@/components/content/TextContent";
 import ImageContent from "@/components/content/ImageContent";
 import { createClient } from "@/lib/supabase/client";
-import { PlusCircleIcon, PlusIcon, ShareIcon } from "lucide-react";
+import { PlusCircleIcon } from "lucide-react";
 import BoxShareButton from "@/components/BoxShareButton";
 
 interface BoxContentProps {

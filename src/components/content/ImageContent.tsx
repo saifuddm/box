@@ -1,5 +1,5 @@
 import { ClipboardIcon, Loader2 } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Button } from "../ui/button";
 import { createClient } from "@/lib/supabase/client";
 import Image from "next/image";
@@ -11,14 +11,17 @@ interface ImageContentProps {
   alt: string;
   fromSupabase?: boolean;
 }
+
+const supabase = createClient();
+
 function ImageContent({ id, src, alt, fromSupabase }: ImageContentProps) {
-  const supabase = createClient();
   const [sourceUrl, setSourceUrl] = useState<string>(src);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCopying, setIsCopying] = useState(false);
 
-  async function getSignedUrl() {
+  const getSignedUrl = useCallback(async () => {
+    console.log(`Getting signed URL for: ${src}`);
     try {
       const { data: signedUrl, error: signedUrlError } =
         await supabase.functions.invoke("get-storage-content", {
@@ -37,12 +40,12 @@ function ImageContent({ id, src, alt, fromSupabase }: ImageContentProps) {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [src]);
 
   async function handleCopyImage() {
     setIsCopying(true);
 
-    const success = await copyImageToClipboard(sourceUrl, {
+    await copyImageToClipboard(sourceUrl, {
       onSuccess: () => {
         console.log("Image copied successfully");
       },
@@ -58,13 +61,16 @@ function ImageContent({ id, src, alt, fromSupabase }: ImageContentProps) {
   }
 
   useEffect(() => {
-    if (fromSupabase) {
-      console.log("Getting signed URL currently:", sourceUrl);
+    console.log(
+      `ImageContent useEffect - fromSupabase: ${fromSupabase}, src: ${src}`
+    );
+    if (fromSupabase && sourceUrl === src) {
+      // Only call getSignedUrl if we haven't already fetched a signed URL
       getSignedUrl();
-    } else {
+    } else if (!fromSupabase) {
       setIsLoading(false);
     }
-  }, [fromSupabase]);
+  }, [fromSupabase, getSignedUrl, src, sourceUrl]);
 
   return (
     <div id={id} className="bg-card border border-border rounded-md p-2 h-min">
