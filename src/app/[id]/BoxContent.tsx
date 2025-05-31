@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import TextContent from "@/components/content/TextContent";
 import ImageContent from "@/components/content/ImageContent";
 import { createClient } from "@/lib/supabase/client";
+import { PlusCircleIcon, PlusIcon, ShareIcon } from "lucide-react";
+import BoxShareButton from "@/components/BoxShareButton";
 
 interface BoxContentProps {
   boxId: string;
@@ -195,14 +197,16 @@ export default function BoxContent({
       >
         {renderContent()}
       </div>
-      <div
-        id="actions"
-        className="flex gap-2 md:flex-col row-start-3 md:row-start-auto self-start"
-      >
+      <div id="actions" className="flex gap-2 row-start-3 self-start">
         <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
           <DrawerTrigger asChild>
-            <Button className="cursor-pointer" disabled={isSubmitting}>
-              Add
+            <Button
+              variant="default"
+              className="cursor-pointer "
+              disabled={isSubmitting}
+              size="lg"
+            >
+              <PlusCircleIcon />
             </Button>
           </DrawerTrigger>
           <DrawerContent>
@@ -225,6 +229,7 @@ export default function BoxContent({
             </div>
           </DrawerContent>
         </Drawer>
+        <BoxShareButton boxName={boxName} boxId={boxId} />
       </div>
     </div>
   );
