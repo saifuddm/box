@@ -63,6 +63,7 @@ export default async function BoxPage({ params, searchParams }: BoxPageProps) {
       redirect("/");
     }
 
+    console.log("Result:", result);
     const content = result.data;
     return (
       <BoxContent

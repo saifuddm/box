@@ -132,11 +132,41 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Since this coming from textContent add the type to the content
-    const contentWithType = textContent.map((content) => ({
+    // Get all image content for this box
+    const { data: imageContent, error: imageContentError } =
+      await supabaseClient
+        .from("ImageContent")
+        .select("id, content, created_at")
+        .eq("box", boxId)
+        .order("created_at", { ascending: true });
+
+    if (imageContentError) {
+      console.error("Error fetching image content:", imageContentError);
+      return new Response(
+        JSON.stringify({ error: "Failed to fetch image content" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // Tag the content with the type
+    const contentWithTypeText = textContent.map((content) => ({
       ...content,
       type: "text",
     }));
+
+    const contentWithTypeImage = imageContent.map((content) => ({
+      ...content,
+      type: "image",
+    }));
+
+    // Combine and sort by created_at
+    const contentWithType = [
+      ...contentWithTypeText,
+      ...contentWithTypeImage,
+    ].sort((a, b) => a.created_at.localeCompare(b.created_at));
 
     // Return the content
     return new Response(

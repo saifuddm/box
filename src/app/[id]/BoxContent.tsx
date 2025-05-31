@@ -40,6 +40,7 @@ export default function BoxContent({
       content: string;
       type: "text" | "image" | "empty";
       file?: File;
+      fromSupabase?: boolean;
     }[]
   >([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,6 +53,7 @@ export default function BoxContent({
       id: item.id,
       content: item.content,
       type: item.type,
+      fromSupabase: true,
     }));
     setContent(formattedContent);
   }, [initialContent]);
@@ -107,7 +109,29 @@ export default function BoxContent({
 
         setContent((prev) => [...prev, newContent]);
       } else if (content.type === "image") {
-        // For now, just add to local state (we'll implement image saving later)
+        //Convert file to base64
+        const base64 = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(content.file!);
+        });
+
+        const { error } = await supabase.functions.invoke("upload-image", {
+          method: "POST",
+          body: JSON.stringify({
+            boxId,
+            name: content.file?.name,
+            base64Data: base64,
+            mimeType: content.file?.type,
+          }),
+        });
+
+        if (error) {
+          console.error("Error uploading image:", error);
+          setSubmitError("Failed to upload image. Please try again.");
+          return;
+        }
+
         const newContent = {
           id: crypto.randomUUID(),
           content: content.data,
@@ -166,6 +190,7 @@ export default function BoxContent({
             id={item.id}
             src={item.file ? URL.createObjectURL(item.file) : item.content}
             alt={item.file ? item.file.name : item.content}
+            fromSupabase={item.fromSupabase}
             handleCheckboxChange={handleCheckboxChange}
           />
         );
