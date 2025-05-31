@@ -4,8 +4,8 @@ import PasswordDialog from "./PasswordDialog";
 import BoxContent from "./BoxContent";
 
 interface BoxPageProps {
-  params: { id: string };
-  searchParams: { pass?: string; error?: string };
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ pass?: string; error?: string }>;
 }
 
 export default async function BoxPage({ params, searchParams }: BoxPageProps) {

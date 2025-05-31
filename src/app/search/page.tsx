@@ -4,10 +4,10 @@ import { redirect } from "next/navigation";
 import SearchResults from "./SearchResults";
 
 interface SearchPageProps {
-  searchParams: {
+  searchParams: Promise<{
     q: string;
     error?: string;
-  };
+  }>;
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {

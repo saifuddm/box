@@ -16,6 +16,22 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  experimental: {
+    typedRoutes: false,
+  },
+  // Exclude supabase folder from Next.js compilation
+  pageExtensions: ["js", "jsx", "ts", "tsx", "mdx"],
+  webpack: (config, { isServer }) => {
+    // Ignore supabase functions during build
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: /supabase/,
+    };
+    return config;
+  },
 };
 
 export default nextConfig;
