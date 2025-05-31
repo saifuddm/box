@@ -1,4 +1,4 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
 export const createClient = (request: NextRequest) => {
@@ -9,6 +9,7 @@ export const createClient = (request: NextRequest) => {
     },
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -18,6 +19,7 @@ export const createClient = (request: NextRequest) => {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           cookiesToSet.forEach(({ name, value, options }) =>
             request.cookies.set(name, value)
           );
