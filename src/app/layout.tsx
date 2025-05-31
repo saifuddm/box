@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Box",
+  authors: [{ name: "saifuddm", url: "https://github.com/saifuddm" }],
   description: "Create short lived boxes to pass information between devices.",
 };
 
