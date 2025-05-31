@@ -63,24 +63,36 @@ export type Database = {
           box: string
           content: string
           created_at: string
-          file: string
           id: string
         }
         Insert: {
           box?: string
           content?: string
           created_at?: string
-          file?: string
           id?: string
         }
         Update: {
           box?: string
           content?: string
           created_at?: string
-          file?: string
           id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ImageContent_box_fkey"
+            columns: ["box"]
+            isOneToOne: false
+            referencedRelation: "Box"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ImageContent_box_fkey"
+            columns: ["box"]
+            isOneToOne: false
+            referencedRelation: "PublicBox"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       TextContent: {
         Row: {

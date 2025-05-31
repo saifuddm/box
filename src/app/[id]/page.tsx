@@ -18,12 +18,12 @@ export default async function BoxPage({ params, searchParams }: BoxPageProps) {
 
   // Get the box information to check if it exists and if it's password protected
   const { data: box, error: boxError } = await supabase
-    .from("Box")
+    .from("PublicBox")
     .select("id, password_protected, name")
     .eq("id", id)
     .single();
 
-  if (boxError || !box) {
+  if (boxError || !box || !box.name) {
     redirect("/");
   }
 
