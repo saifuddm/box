@@ -28,6 +28,7 @@ export default async function BoxPage({ params, searchParams }: BoxPageProps) {
   }
 
   // If box is password protected and (no password provided OR there's an error), show password dialog
+
   if (box.password_protected && (!pass || error)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -37,48 +38,23 @@ export default async function BoxPage({ params, searchParams }: BoxPageProps) {
   }
 
   // Always call the edge function - it handles both protected and non-protected boxes
-  try {
-    const { data: result, error: functionError } =
-      await supabase.functions.invoke("get-box-content", {
-        body: { boxId: id, password: pass || null },
-      });
+  const { data: result, error: functionError } =
+    await supabase.functions.invoke("get-box-content", {
+      body: { boxId: id, password: pass || "" },
+    });
 
-    if (functionError) {
-      console.error("Edge function error:", functionError);
+  if (functionError) {
+    const message = await functionError.context.text();
+    const errorMessage = JSON.parse(message);
 
-      // If it's a password error and box is protected, redirect with error parameter
-      if (
-        box.password_protected &&
-        (functionError.message?.includes("Password") ||
-          functionError.message?.includes("Invalid"))
-      ) {
-        redirect(
-          `/${id}?error=${encodeURIComponent(
-            "Incorrect password. Please try again."
-          )}`
-        );
-      }
+    console.log("Error message:", errorMessage.error);
 
-      // For other errors, redirect to home
-      redirect("/");
-    }
-
-    console.log("Result:", result);
-    const content = result.data;
-    return (
-      <BoxContent
-        boxId={id}
-        boxName={box.name}
-        initialContent={content || []}
-      />
-    );
-  } catch (error) {
-    console.error("Error calling edge function:", error);
-    // Redirect with a generic error message
-    redirect(
-      `/${id}?error=${encodeURIComponent(
-        "An error occurred. Please try again."
-      )}`
-    );
+    redirect(`/${id}?error=${encodeURIComponent(errorMessage.error)}`);
   }
+
+  console.log("Result:", result);
+  const content = result.data;
+  return (
+    <BoxContent boxId={id} boxName={box.name} initialContent={content || []} />
+  );
 }
