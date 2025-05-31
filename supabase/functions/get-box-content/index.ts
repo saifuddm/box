@@ -1,8 +1,3 @@
-// Follow this setup guide to integrate the Deno language server with your editor:
-// https://deno.land/manual/getting_started/setup_your_environment
-// This enables autocomplete, go to definition, etc.
-
-// Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -24,7 +19,43 @@ async function hashPassword(password: string): Promise<string> {
   return hashHex;
 }
 
-console.log("Hello from Functions!");
+// Helper function to fetch text content for a box
+async function fetchTextContent(supabaseClient: any, boxId: string) {
+  const { data, error } = await supabaseClient
+    .from("TextContent")
+    .select("id, content, created_at")
+    .eq("box", boxId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to fetch text content: ${error.message}`);
+  }
+
+  return data.map((content: any) => ({
+    ...content,
+    type: "text",
+  }));
+}
+
+// Helper function to fetch image content for a box
+async function fetchImageContent(supabaseClient: any, boxId: string) {
+  const { data, error } = await supabaseClient
+    .from("ImageContent")
+    .select("id, content, created_at")
+    .eq("box", boxId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to fetch image content: ${error.message}`);
+  }
+
+  return data.map((content: any) => ({
+    ...content,
+    type: "image",
+  }));
+}
+
+console.log("Hello from Get Box Content!");
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
@@ -83,23 +114,12 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Verify password
-      if (!box.password_hash) {
-        console.error("Box marked as protected but no password hash found");
-        return new Response(
-          JSON.stringify({ error: "Box configuration error" }),
-          {
-            status: 500,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
-
       // Hash the provided password and compare with stored hash
       const hashedPassword = await hashPassword(password);
       const isPasswordValid = hashedPassword === box.password_hash;
 
       if (!isPasswordValid) {
+        console.log("Debugging (Password Validation):", isPasswordValid);
         return new Response(
           JSON.stringify({
             error: "Invalid password",
@@ -114,59 +134,17 @@ Deno.serve(async (req) => {
     }
 
     // If we reach here, either the box is not protected or password is correct
-    // Get all text content for this box
-    const { data: textContent, error: contentError } = await supabaseClient
-      .from("TextContent")
-      .select("id, content, created_at")
-      .eq("box", boxId)
-      .order("created_at", { ascending: true });
+    // Fetch both text and image content in parallel
 
-    if (contentError) {
-      console.error("Error fetching content:", contentError);
-      return new Response(
-        JSON.stringify({ error: "Failed to fetch content" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Get all image content for this box
-    const { data: imageContent, error: imageContentError } =
-      await supabaseClient
-        .from("ImageContent")
-        .select("id, content, created_at")
-        .eq("box", boxId)
-        .order("created_at", { ascending: true });
-
-    if (imageContentError) {
-      console.error("Error fetching image content:", imageContentError);
-      return new Response(
-        JSON.stringify({ error: "Failed to fetch image content" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Tag the content with the type
-    const contentWithTypeText = textContent.map((content) => ({
-      ...content,
-      type: "text",
-    }));
-
-    const contentWithTypeImage = imageContent.map((content) => ({
-      ...content,
-      type: "image",
-    }));
+    const [textContent, imageContent] = await Promise.all([
+      fetchTextContent(supabaseClient, boxId),
+      fetchImageContent(supabaseClient, boxId),
+    ]);
 
     // Combine and sort by created_at
-    const contentWithType = [
-      ...contentWithTypeText,
-      ...contentWithTypeImage,
-    ].sort((a, b) => a.created_at.localeCompare(b.created_at));
+    const contentWithType = [...textContent, ...imageContent].sort((a, b) =>
+      a.created_at.localeCompare(b.created_at)
+    );
 
     // Return the content
     return new Response(
@@ -189,15 +167,3 @@ Deno.serve(async (req) => {
     });
   }
 });
-
-/* To invoke locally:
-
-  1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
-  2. Make an HTTP request:
-
-  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/get-box-content' \
-    --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' \
-    --header 'Content-Type: application/json' \
-    --data '{"name":"Functions"}'
-
-*/
