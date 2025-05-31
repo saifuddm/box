@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -16,13 +16,21 @@ import { Button } from "@/components/ui/button";
 
 interface PasswordDialogProps {
   boxId: string;
-  error?: string;
 }
 
-export default function PasswordDialog({ boxId, error }: PasswordDialogProps) {
+export default function PasswordDialog({ boxId }: PasswordDialogProps) {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Get error from search params
+  const error = searchParams.get("error");
+
+  // Reset submitting state when component mounts or when there's an error
+  useEffect(() => {
+    setIsSubmitting(false);
+  }, [error]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,7 +38,7 @@ export default function PasswordDialog({ boxId, error }: PasswordDialogProps) {
 
     setIsSubmitting(true);
 
-    // Redirect to the same page with password parameter
+    // Redirect to the same page with password parameter (without error param)
     router.push(`/${boxId}?pass=${encodeURIComponent(password)}`);
   };
 

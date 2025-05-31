@@ -5,13 +5,24 @@
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import * as bcrypt from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+
+// Helper function to hash password using Web Crypto API
+async function hashPassword(password: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return hashHex;
+}
 
 console.log("Hello from Functions!");
 
@@ -84,7 +95,9 @@ Deno.serve(async (req) => {
         );
       }
 
-      const isPasswordValid = await bcrypt.compare(password, box.password_hash);
+      // Hash the provided password and compare with stored hash
+      const hashedPassword = await hashPassword(password);
+      const isPasswordValid = hashedPassword === box.password_hash;
 
       if (!isPasswordValid) {
         return new Response(
@@ -118,6 +131,7 @@ Deno.serve(async (req) => {
         }
       );
     }
+
     // Since this coming from textContent add the type to the content
     const contentWithType = textContent.map((content) => ({
       ...content,

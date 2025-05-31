@@ -5,14 +5,14 @@ import BoxContent from "./BoxContent";
 
 interface BoxPageProps {
   params: { id: string };
-  searchParams: { pass?: string };
+  searchParams: { pass?: string; error?: string };
 }
 
 export default async function BoxPage({ params, searchParams }: BoxPageProps) {
   const resolvedParams = await params;
   const { id } = resolvedParams;
   const resolvedSearchParams = await searchParams;
-  const { pass } = resolvedSearchParams;
+  const { pass, error } = resolvedSearchParams;
 
   const supabase = await createClient();
 
@@ -27,8 +27,8 @@ export default async function BoxPage({ params, searchParams }: BoxPageProps) {
     redirect("/");
   }
 
-  // If box is password protected but no password provided, show password dialog
-  if (box.password_protected && !pass) {
+  // If box is password protected and (no password provided OR there's an error), show password dialog
+  if (box.password_protected && (!pass || error)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <PasswordDialog boxId={id} />
@@ -45,19 +45,17 @@ export default async function BoxPage({ params, searchParams }: BoxPageProps) {
 
     if (functionError) {
       console.error("Edge function error:", functionError);
-      const errorMessage =
-        functionError.message || "An error occurred. Please try again.";
 
-      // If it's a password error and box is protected, show password dialog
+      // If it's a password error and box is protected, redirect with error parameter
       if (
         box.password_protected &&
         (functionError.message?.includes("Password") ||
           functionError.message?.includes("Invalid"))
       ) {
-        return (
-          <div className="flex items-center justify-center min-h-screen">
-            <PasswordDialog boxId={id} error={errorMessage} />
-          </div>
+        redirect(
+          `/${id}?error=${encodeURIComponent(
+            "Incorrect password. Please try again."
+          )}`
         );
       }
 
@@ -75,13 +73,11 @@ export default async function BoxPage({ params, searchParams }: BoxPageProps) {
     );
   } catch (error) {
     console.error("Error calling edge function:", error);
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <PasswordDialog
-          boxId={id}
-          error="An error occurred. Please try again."
-        />
-      </div>
+    // Redirect with a generic error message
+    redirect(
+      `/${id}?error=${encodeURIComponent(
+        "An error occurred. Please try again."
+      )}`
     );
   }
 }
