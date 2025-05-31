@@ -32,7 +32,6 @@ export default function BoxContent({
 }: BoxContentProps) {
   const supabase = createClient();
 
-  const [selectedBoxes, setSelectedBoxes] = useState<Set<string>>(new Set());
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [content, setContent] = useState<
     {
@@ -57,18 +56,6 @@ export default function BoxContent({
     }));
     setContent(formattedContent);
   }, [initialContent]);
-
-  const handleCheckboxChange = (contentId: string, isChecked: boolean) => {
-    setSelectedBoxes((prev) => {
-      const newSet = new Set(prev);
-      if (isChecked) {
-        newSet.add(contentId);
-      } else {
-        newSet.delete(contentId);
-      }
-      return newSet;
-    });
-  };
 
   const handleContentSubmit = async (content: {
     type: "text" | "image" | "empty";
@@ -157,13 +144,6 @@ export default function BoxContent({
     setSubmitError(null);
   };
 
-  const handleDelete = () => {
-    // Filter out the selected content items
-    setContent((prev) => prev.filter((item) => !selectedBoxes.has(item.id)));
-    // Clear the selected boxes after deletion
-    setSelectedBoxes(new Set());
-  };
-
   function renderContent() {
     // Create 3 columns to distribute content
     const columns: React.ReactElement[][] = [[], [], []];
@@ -176,12 +156,7 @@ export default function BoxContent({
 
       if (item.type === "text") {
         contentElement = (
-          <TextContent
-            key={item.id}
-            id={item.id}
-            content={item.content}
-            handleCheckboxChange={handleCheckboxChange}
-          />
+          <TextContent key={item.id} id={item.id} content={item.content} />
         );
       } else if (item.type === "image") {
         contentElement = (
@@ -191,7 +166,6 @@ export default function BoxContent({
             src={item.file ? URL.createObjectURL(item.file) : item.content}
             alt={item.file ? item.file.name : item.content}
             fromSupabase={item.fromSupabase}
-            handleCheckboxChange={handleCheckboxChange}
           />
         );
       } else {
@@ -211,15 +185,9 @@ export default function BoxContent({
     );
   }
 
-  const selectedCount = selectedBoxes.size;
-  const title =
-    selectedCount > 0
-      ? `Selected ${boxName}: ${selectedCount}`
-      : boxName || "Box";
-
   return (
     <div className="grid grid-rows-[1.5rem_1rem_0.1fr_1fr] md:grid-rows-[1.5rem_1fr_0.1fr] md:grid-cols-[1fr_0.2fr] items-center justify-items-center md:justify-items-start min-h-screen p-8 pb-20 gap-4 md:gap-16 sm:p-20 font-[family-name:var(--font-geist-mono)] ">
-      <h2 className="text-2xl">{title}</h2>
+      <h2 className="text-2xl">{boxName}</h2>
       <p className="text-sm text-muted-foreground">ID: {boxId}</p>
       <div
         id="content"
@@ -246,7 +214,7 @@ export default function BoxContent({
             </DrawerHeader>
             <div className="px-4 pb-4 overflow-y-auto flex-1">
               {submitError && (
-                <div className="text-red-500 text-sm mb-4 p-2 border border-red-300 rounded bg-red-50">
+                <div className=" text-sm p-2 border border-maroon rounded bg-maroon/10 text-maroon">
                   {submitError}
                 </div>
               )}
@@ -257,21 +225,6 @@ export default function BoxContent({
             </div>
           </DrawerContent>
         </Drawer>
-        {/* <Button
-          disabled={selectedBoxes.size === 0}
-          variant="outline"
-          className="cursor-pointer"
-        >
-          Edit
-        </Button> */}
-        <Button
-          variant="destructive"
-          className="cursor-pointer"
-          disabled={selectedBoxes.size === 0}
-          onClick={handleDelete}
-        >
-          Delete
-        </Button>
       </div>
     </div>
   );

@@ -10,15 +10,8 @@ interface ImageContentProps {
   src: string;
   alt: string;
   fromSupabase?: boolean;
-  handleCheckboxChange: (id: string, checked: boolean) => void;
 }
-function ImageContent({
-  id,
-  src,
-  alt,
-  fromSupabase,
-  handleCheckboxChange,
-}: ImageContentProps) {
+function ImageContent({ id, src, alt, fromSupabase }: ImageContentProps) {
   const supabase = createClient();
   const [sourceUrl, setSourceUrl] = useState<string>(src);
   const [isLoading, setIsLoading] = useState(true);
@@ -106,11 +99,6 @@ function ImageContent({
         )}
       </div>
       <div className="flex justify-between mt-2">
-        <input
-          type="checkbox"
-          className="accent-primary"
-          onChange={(e) => handleCheckboxChange(id, e.target.checked)}
-        />
         <Button
           variant="outline"
           size="icon"
