@@ -1,10 +1,4 @@
-"use client";
 import CreateForm from "./CreateForm";
-
-// I dont like this solution
-export const dynamic = "force-dynamic";
-export const fetchCache = "force-no-store";
-
 export default function CreateBoxPage() {
   return (
     <div className="grid grid-rows-[1.5rem_1fr_0.1fr] md:grid-rows-[1.5rem_1fr_0.1fr] md:grid-cols-[1fr_0.2fr] items-center justify-items-center md:justify-items-start min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-mono)] ">
