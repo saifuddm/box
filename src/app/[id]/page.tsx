@@ -16,9 +16,11 @@ import InsertContentComponent from "@/components/InsertContentComponent";
 import { Button } from "@/components/ui/button";
 import TextContent from "@/components/content/TextContent";
 import ImageContent from "@/components/content/ImageContent";
+import { createClient } from "@/lib/supabase/client";
 
 export default function BoxPage() {
   const pathname = usePathname();
+  const supabase = createClient();
 
   const [selectedBoxes, setSelectedBoxes] = useState<Set<string>>(new Set());
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -30,6 +32,8 @@ export default function BoxPage() {
       file?: File;
     }[]
   >([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleCheckboxChange = (contentId: string, isChecked: boolean) => {
     setSelectedBoxes((prev) => {
@@ -43,7 +47,7 @@ export default function BoxPage() {
     });
   };
 
-  const handleContentSubmit = (content: {
+  const handleContentSubmit = async (content: {
     type: "text" | "image" | "empty";
     data: string | null;
     file?: File;
@@ -56,22 +60,63 @@ export default function BoxPage() {
       return;
     }
 
-    const newContent = {
-      id: crypto.randomUUID(),
-      content: content.data,
-      type: content.type,
-      file: content.file,
-    };
+    setIsSubmitting(true);
+    setSubmitError(null);
 
-    setContent((prev) => [...prev, newContent]);
+    try {
+      // Get the box ID from the pathname (remove the leading slash)
+      const boxId = pathname.slice(1);
 
-    // TODO: Add logic to save the content to the box
-    // For now, just close the drawer
-    setIsDrawerOpen(false);
+      if (content.type === "text") {
+        // Save text content to the database
+        const { data: savedContent, error } = await supabase
+          .from("TextContent")
+          .insert({
+            box: boxId,
+            content: content.data,
+          })
+          .select()
+          .single();
+
+        if (error) {
+          console.error("Error saving text content:", error);
+          setSubmitError("Failed to save content. Please try again.");
+          return;
+        }
+
+        // Add to local state with the database ID
+        const newContent = {
+          id: savedContent.id,
+          content: savedContent.content,
+          type: "text" as const,
+        };
+
+        setContent((prev) => [...prev, newContent]);
+      } else if (content.type === "image") {
+        // For now, just add to local state (we'll implement image saving later)
+        const newContent = {
+          id: crypto.randomUUID(),
+          content: content.data,
+          type: content.type,
+          file: content.file,
+        };
+
+        setContent((prev) => [...prev, newContent]);
+      }
+
+      // Close the drawer on successful save
+      setIsDrawerOpen(false);
+    } catch (err) {
+      console.error("Unexpected error saving content:", err);
+      setSubmitError("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDrawerClose = () => {
     setIsDrawerOpen(false);
+    setSubmitError(null);
   };
 
   const handleDelete = () => {
@@ -146,7 +191,9 @@ export default function BoxPage() {
       >
         <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
           <DrawerTrigger asChild>
-            <Button className="cursor-pointer">Add</Button>
+            <Button className="cursor-pointer" disabled={isSubmitting}>
+              Add
+            </Button>
           </DrawerTrigger>
           <DrawerContent>
             <DrawerHeader>
@@ -156,6 +203,11 @@ export default function BoxPage() {
               </DrawerDescription>
             </DrawerHeader>
             <div className="px-4 pb-4 overflow-y-auto flex-1">
+              {submitError && (
+                <div className="text-red-500 text-sm mb-4 p-2 border border-red-300 rounded bg-red-50">
+                  {submitError}
+                </div>
+              )}
               <InsertContentComponent
                 onSubmit={handleContentSubmit}
                 onClose={handleDrawerClose}

@@ -1,18 +1,55 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import React from "react";
+import React, { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 export default function CreateBoxPage() {
   const router = useRouter();
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const supabase = createClient();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
     const formData = new FormData(e.target as HTMLFormElement);
     const boxName = formData.get("boxName");
     const boxPassword = formData.get("boxPassword");
-    console.log(boxName, boxPassword);
-    router.push(`/${boxName}`);
+
+    try {
+      console.log(boxName, boxPassword);
+
+      // Call the edge function instead of direct database insert
+      const { data, error } = await supabase.functions.invoke("create-box", {
+        body: {
+          name: boxName as string,
+          password: (boxPassword as string) || null,
+        },
+      });
+
+      if (error) {
+        console.error("Edge function error:", error);
+        setError("Failed to create box. Please try again.");
+        return;
+      }
+
+      // Navigate to the created box
+      if (data?.data?.id) {
+        router.push(`/${data.data.id}`);
+      } else {
+        setError("Box created but no ID returned");
+      }
+    } catch (err) {
+      console.error("Error creating box:", err);
+      setError("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
+
   return (
     <div className="grid grid-rows-[1.5rem_1fr_0.1fr] md:grid-rows-[1.5rem_1fr_0.1fr] md:grid-cols-[1fr_0.2fr] items-center justify-items-center md:justify-items-start min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-mono)] ">
       <h2 className="text-2xl">Create a new Box</h2>
@@ -23,6 +60,11 @@ export default function CreateBoxPage() {
         onSubmit={handleSubmit}
       >
         <div className="flex flex-col space-y-2 w-full md:w-fit h-fit">
+          {error && (
+            <div className="text-red-500 text-sm mb-4 p-2 border border-red-300 rounded bg-red-50">
+              {error}
+            </div>
+          )}
           <label htmlFor="boxName" className="text-foreground">
             Box Name
           </label>
@@ -32,21 +74,23 @@ export default function CreateBoxPage() {
             placeholder="my-cool-box"
             className="border-b-2 border-primary bg-transparent outline-none mb-6 text-foreground placeholder:text-muted-foreground placeholder:opacity-50"
             required
+            disabled={isLoading}
           />
           <label htmlFor="boxPassword" className="text-foreground">
             Box Password (optional)
           </label>
           <input
-            type="text"
-            name="password"
-            id="password"
+            type="password"
+            name="boxPassword"
+            id="boxPassword"
             placeholder="Password"
             className="border-b-2 border-primary bg-transparent outline-none text-foreground placeholder:text-muted-foreground placeholder:opacity-50"
+            disabled={isLoading}
           />
         </div>
 
-        <Button type="submit" className="cursor-pointer">
-          Create Box
+        <Button type="submit" className="cursor-pointer" disabled={isLoading}>
+          {isLoading ? "Creating..." : "Create Box"}
         </Button>
       </form>
       <div className="text-sm self-start text-muted-foreground">
