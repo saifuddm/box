@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Database } from "@/lib/supabase/database.types";
+import { Database } from "@/utils/supabase/database.types";
 import { ArrowRightCircle, LockIcon } from "lucide-react";
 import Link from "next/link";
 

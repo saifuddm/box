@@ -1,7 +1,7 @@
 import { ClipboardIcon, Loader2 } from "lucide-react";
 import React, { useEffect, useState, useCallback } from "react";
 import { Button } from "../ui/button";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/utils/supabase/client";
 import Image from "next/image";
 import { copyImageToClipboard } from "@/utils/imageClipboard";
 

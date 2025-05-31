@@ -12,7 +12,7 @@ import InsertContentComponent from "@/components/InsertContentComponent";
 import { Button } from "@/components/ui/button";
 import TextContent from "@/components/content/TextContent";
 import ImageContent from "@/components/content/ImageContent";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/utils/supabase/client";
 import { PlusCircleIcon } from "lucide-react";
 import BoxShareButton from "@/components/BoxShareButton";
 
