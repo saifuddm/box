@@ -10,7 +10,7 @@ function TextContent({ id, content }: TextContentProps) {
   return (
     <div id={id} className="bg-card border border-border rounded-md p-2 h-min">
       <div className="overflow-y-auto">
-        <p className="text-card-foreground">{content}</p>
+        <p className="text-card-foreground whitespace-pre-wrap">{content}</p>
       </div>
       <div className="flex justify-between mt-2">
         <Button
