@@ -37,5 +37,13 @@
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.0",
     "typescript": "^5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/saifuddm/box.git"
+  },
+  "homepage": "{REPLACE_WITH_HOMEPAGE}",
+  "bugs": {
+    "url": "https://github.com/saifuddm/box/issues"
   }
 }
