@@ -23,22 +23,23 @@ export default function CreateBoxPage() {
       console.log(boxName, boxPassword);
 
       // Call the edge function instead of direct database insert
-      const { data, error } = await supabase.functions.invoke("create-box", {
-        body: {
-          name: boxName as string,
-          password: (boxPassword as string) || null,
-        },
-      });
+      const { data: createBoxData, error: createBoxError } =
+        await supabase.functions.invoke("create-box", {
+          body: {
+            name: boxName as string,
+            password: (boxPassword as string) || null,
+          },
+        });
 
-      if (error) {
-        console.error("Edge function error:", error);
+      if (createBoxError) {
+        console.error("Edge function error:", createBoxError);
         setError("Failed to create box. Please try again.");
         return;
       }
 
       // Navigate to the created box
-      if (data?.data?.id) {
-        router.push(`/${data.data.id}`);
+      if (createBoxData?.data?.id) {
+        router.push(`/${createBoxData.data.id}`);
       } else {
         setError("Box created but no ID returned");
       }
