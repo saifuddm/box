@@ -55,7 +55,7 @@ export default function PasswordDialog({ boxId }: PasswordDialogProps) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="text-red-500 text-sm p-2 border border-red-300 rounded bg-red-50">
+            <div className=" text-sm p-2 border border-maroon rounded bg-maroon/10 text-maroon">
               {error}
             </div>
           )}
@@ -79,7 +79,7 @@ export default function PasswordDialog({ boxId }: PasswordDialogProps) {
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push("/")}
+              onClick={() => router.back()}
               disabled={isSubmitting}
             >
               Cancel
