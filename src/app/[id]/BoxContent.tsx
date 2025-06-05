@@ -13,8 +13,9 @@ import { Button } from "@/components/ui/button";
 import TextContent from "@/components/content/TextContent";
 import ImageContent from "@/components/content/ImageContent";
 import { createClient } from "@/utils/supabase/client";
-import { PlusCircleIcon } from "lucide-react";
+import { HomeIcon, PlusCircleIcon } from "lucide-react";
 import BoxShareButton from "@/components/BoxShareButton";
+import Link from "next/link";
 
 interface BoxContentProps {
   boxId: string;
@@ -189,7 +190,14 @@ export default function BoxContent({
 
   return (
     <div className="grid grid-rows-[1.5rem_1rem_0.1fr_1fr] md:grid-rows-[1.5rem_1fr_0.1fr] md:grid-cols-[1fr_0.2fr] items-center justify-items-center md:justify-items-start min-h-screen p-8 pb-20 gap-4 md:gap-16 sm:p-20 font-[family-name:var(--font-geist-mono)] ">
-      <h2 className="text-2xl">{boxName}</h2>
+      <div className="flex flex-row space-x-2 items-center">
+        <Button variant="outline" size="icon" asChild>
+          <Link href="/" aria-label="Home">
+            <HomeIcon className="w-4 h-4" />
+          </Link>
+        </Button>
+        <h2 className="text-2xl">/{boxName}</h2>
+      </div>
       <p className="text-sm text-muted-foreground">ID: {boxId}</p>
       <div
         id="content"

@@ -24,6 +24,7 @@ export default async function BoxPage({ params, searchParams }: BoxPageProps) {
     .single();
 
   if (boxError || !box || !box.name) {
+    console.error("Box not found or error:", boxError);
     redirect("/");
   }
 
