@@ -25,7 +25,7 @@ export default function Home() {
           <p className="text-sm text-muted-foreground opacity-50">
             For a tutorial on how to use Box, click on{" "}
             <span className="border px-2 py-1 rounded-md">Search Box</span> and
-            search for "Tutorial".
+            search for &quot;Tutorial&quot;.
           </p>
         </div>
       </main>
