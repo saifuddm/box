@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Database } from "@/utils/supabase/database.types";
-import { ArrowRightCircle, LockIcon } from "lucide-react";
+import { ArrowRightCircle, HomeIcon, LockIcon } from "lucide-react";
 import Link from "next/link";
 
 interface SearchResultsProps {
@@ -11,7 +11,14 @@ export default function SearchResults({
 }: SearchResultsProps) {
   return (
     <div className="grid grid-rows-[1.5rem_1fr_0.1fr] md:grid-rows-[1.5rem_1fr_0.1fr] md:grid-cols-[1fr_0.2fr] items-center justify-items-center md:justify-items-start min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-mono)] ">
-      <h2 className="text-2xl">Search Results</h2>
+      <div className="flex flex-row space-x-2 items-center">
+        <Button variant="outline" size="icon" asChild>
+          <Link href="/" aria-label="Home">
+            <HomeIcon className="w-4 h-4" />
+          </Link>
+        </Button>
+        <h2 className="text-2xl">/Search Results</h2>
+      </div>
       <p className="text-sm hidden md:block text-muted-foreground">
         Count: {boxSearchResults.length}
       </p>

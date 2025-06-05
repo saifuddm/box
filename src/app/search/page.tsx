@@ -2,12 +2,32 @@ import { createClient } from "@/utils/supabase/server";
 import SearchDialog from "./SearchDialog";
 import { redirect } from "next/navigation";
 import SearchResults from "./SearchResults";
+import { Metadata } from "next";
 
 interface SearchPageProps {
   searchParams: Promise<{
     q: string;
     error?: string;
   }>;
+}
+
+export async function generateMetadata({
+  searchParams,
+}: SearchPageProps): Promise<Metadata> {
+  const resolvedSearchParams = await searchParams;
+  const { q } = resolvedSearchParams;
+
+  if (!q || q.trim() === "") {
+    return {
+      title: "Box Search",
+      description: "Search for boxes by name",
+    };
+  }
+
+  return {
+    title: `${q} | Box Search`,
+    description: `Search results for "${q}"`,
+  };
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {

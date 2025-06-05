@@ -149,7 +149,8 @@ export default function BoxContent({
 
   function renderContent() {
     // Create 3 columns to distribute content
-    const columns: React.ReactElement[][] = [[], [], []];
+    const threeColumns: React.ReactElement[][] = [[], [], []];
+    const singleColumn: React.ReactElement[] = [];
 
     // Distribute content items across columns in round-robin fashion
     content.forEach((item, index) => {
@@ -175,21 +176,23 @@ export default function BoxContent({
         return; // Skip empty content
       }
 
-      columns[columnIndex].push(contentElement);
+      threeColumns[columnIndex].push(contentElement);
+      singleColumn.push(contentElement);
     });
 
     // Render the 3 columns
     return (
       <>
-        <div className="flex flex-col gap-2">{columns[0]}</div>
-        <div className="flex flex-col gap-2">{columns[1]}</div>
-        <div className="flex flex-col gap-2">{columns[2]}</div>
+        <div className=" flex-col gap-2 hidden lg:flex">{threeColumns[0]}</div>
+        <div className=" flex-col gap-2 hidden lg:flex">{threeColumns[1]}</div>
+        <div className=" flex-col gap-2 hidden lg:flex">{threeColumns[2]}</div>
+        <div className="flex flex-col gap-2 lg:hidden">{singleColumn}</div>
       </>
     );
   }
 
   return (
-    <div className="grid grid-rows-[1.5rem_1rem_0.1fr_1fr] md:grid-rows-[1.5rem_1fr_0.1fr] md:grid-cols-[1fr_0.2fr] items-center justify-items-center md:justify-items-start min-h-screen p-8 pb-20 gap-4 md:gap-16 sm:p-20 font-[family-name:var(--font-geist-mono)] ">
+    <div className="grid grid-rows-[2.5rem_1fr] grid-cols-[1fr_0.2fr] min-h-screen p-8 sm:p-20 gap-4 lg:gap-16 font-[family-name:var(--font-geist-mono)] ">
       <div className="flex flex-row space-x-2 items-center">
         <Button variant="outline" size="icon" asChild>
           <Link href="/" aria-label="Home">
@@ -198,14 +201,8 @@ export default function BoxContent({
         </Button>
         <h2 className="text-2xl">/{boxName}</h2>
       </div>
-      <p className="text-sm text-muted-foreground">ID: {boxId}</p>
-      <div
-        id="content"
-        className="grid grid-cols-1 md:grid-cols-3 gap-2 h-full items-start"
-      >
-        {renderContent()}
-      </div>
-      <div id="actions" className="flex gap-2 row-start-3 self-start">
+      {/* <p className="text-sm text-muted-foreground text-wrap">ID: {boxId}</p> */}
+      <div id="actions" className="flex gap-2 sticky top-6 justify-end">
         <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
           <DrawerTrigger asChild>
             <Button
@@ -238,6 +235,12 @@ export default function BoxContent({
           </DrawerContent>
         </Drawer>
         <BoxShareButton boxName={boxName} boxId={boxId} />
+      </div>
+      <div
+        id="content"
+        className="grid grid-cols-1 lg:grid-cols-3 gap-2 col-span-2 lg:col-span-1"
+      >
+        {renderContent()}
       </div>
     </div>
   );

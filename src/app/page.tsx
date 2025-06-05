@@ -20,6 +20,14 @@ export default function Home() {
             <Link href="/search">Search Box</Link>
           </Button>
         </div>
+
+        <div className="flex flex-col gap-2 text-center sm:text-left">
+          <p className="text-sm text-muted-foreground opacity-50">
+            For a tutorial on how to use Box, click on{" "}
+            <span className="border px-2 py-1 rounded-md">Search Box</span> and
+            search for "Tutorial".
+          </p>
+        </div>
       </main>
       <footer className="row-start-3 flex items-center gap-2">
         <p className="text-muted-foreground">Made with ❤️ by</p>

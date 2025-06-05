@@ -107,7 +107,7 @@ Box is a simple, temporary sharing platform where you can:
         content: `📝 How to Add Content
 
 To add content to any box:
-1. Click the "+" button at the bottom
+1. Click the "+" button
 2. Type your text or paste from clipboard
 3. Or upload an image by clicking "Choose Image"
 4. Submit to add it to the box

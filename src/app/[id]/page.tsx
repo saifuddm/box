@@ -2,10 +2,39 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import PasswordDialog from "./PasswordDialog";
 import BoxContent from "./BoxContent";
+import { Metadata } from "next";
 
 interface BoxPageProps {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ pass?: string; error?: string }>;
+}
+
+export async function generateMetadata({
+  params,
+}: BoxPageProps): Promise<Metadata> {
+  const resolvedParams = await params;
+  const { id } = resolvedParams;
+
+  const supabase = await createClient();
+
+  // Get the box information for metadata
+  const { data: box, error: boxError } = await supabase
+    .from("PublicBox")
+    .select("id, name")
+    .eq("id", id)
+    .single();
+
+  if (boxError || !box || !box.name) {
+    return {
+      title: "Box Not Found",
+      description: "The requested box could not be found.",
+    };
+  }
+
+  return {
+    title: `${box.name} | Box`,
+    description: `View contents of ${box.name}`,
+  };
 }
 
 export default async function BoxPage({ params, searchParams }: BoxPageProps) {
