@@ -17,11 +17,17 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 
+interface ImageFile {
+  file: File;
+  preview: string;
+  id: string;
+}
+
 interface InsertContentComponentProps {
   onSubmit?: (content: {
     type: "text" | "image" | "empty";
     data: string | null;
-    file?: File;
+    files?: File[];
   }) => void;
   onClose?: () => void;
 }
@@ -31,8 +37,7 @@ export default function InsertContentComponent({
   onClose,
 }: InsertContentComponentProps) {
   const [textContent, setTextContent] = useState("");
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<ImageFile[]>([]);
   const [showEmptyContentDialog, setShowEmptyContentDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -56,13 +61,14 @@ export default function InsertContentComponent({
           if (type.startsWith("image/")) {
             const blob = await clipboardItem.getType(type);
             const file = new File([blob], "pasted-image.png", { type });
-            setSelectedFile(file);
-
-            // Create preview URL
             const previewUrl = URL.createObjectURL(blob);
-            setImagePreview(previewUrl);
+            const newImageFile: ImageFile = {
+              file,
+              preview: previewUrl,
+              id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+            };
 
-            // Clear text content when image is pasted
+            setImageFiles(prev => [...prev, newImageFile]);
             setTextContent("");
             return;
           }
@@ -79,18 +85,28 @@ export default function InsertContentComponent({
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && file.type.startsWith("image/")) {
-      setSelectedFile(file);
+    const files = event.target.files;
+    if (files) {
+      const newImageFiles: ImageFile[] = [];
+      
+      Array.from(files).forEach((file) => {
+        if (file.type.startsWith("image/")) {
+          const previewUrl = URL.createObjectURL(file);
+          const newImageFile: ImageFile = {
+            file,
+            preview: previewUrl,
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          };
+          newImageFiles.push(newImageFile);
+        }
+      });
 
-      // Create preview URL
-      const previewUrl = URL.createObjectURL(file);
-      setImagePreview(previewUrl);
-
-      // Clear text content when image is uploaded
-      setTextContent("");
-    } else {
-      alert("Please select a valid image file");
+      if (newImageFiles.length > 0) {
+        setImageFiles(prev => [...prev, ...newImageFiles]);
+        setTextContent("");
+      } else {
+        alert("Please select valid image files");
+      }
     }
   };
 
@@ -98,20 +114,22 @@ export default function InsertContentComponent({
     fileInputRef.current?.click();
   };
 
-  const handleRemoveImage = () => {
-    setImagePreview(null);
-    setSelectedFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+  const handleRemoveImage = (id: string) => {
+    setImageFiles(prev => {
+      const imageToRemove = prev.find(img => img.id === id);
+      if (imageToRemove) {
+        URL.revokeObjectURL(imageToRemove.preview);
+      }
+      return prev.filter(img => img.id !== id);
+    });
   };
 
   const handleSubmit = () => {
-    if (imagePreview && selectedFile) {
+    if (imageFiles.length > 0) {
       onSubmit?.({
         type: "image",
-        data: imagePreview,
-        file: selectedFile,
+        data: null,
+        files: imageFiles.map(img => img.file),
       });
     } else if (textContent.trim()) {
       onSubmit?.({
@@ -138,15 +156,16 @@ export default function InsertContentComponent({
 
   const handleClear = () => {
     setTextContent("");
-    setImagePreview(null);
-    setSelectedFile(null);
+    // Clean up preview URLs
+    imageFiles.forEach(img => URL.revokeObjectURL(img.preview));
+    setImageFiles([]);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
   const handleCloseOrClear = () => {
-    const hasContent = textContent.trim() || imagePreview;
+    const hasContent = textContent.trim() || imageFiles.length > 0;
     if (hasContent) {
       handleClear();
     } else {
@@ -154,7 +173,7 @@ export default function InsertContentComponent({
     }
   };
 
-  const hasContent = textContent.trim() || imagePreview;
+  const hasContent = textContent.trim() || imageFiles.length > 0;
 
   return (
     <div className="space-y-4">
@@ -172,12 +191,12 @@ export default function InsertContentComponent({
           value={textContent}
           onChange={(e) => setTextContent(e.target.value)}
           className="min-h-[100px] resize-none"
-          disabled={!!imagePreview}
+          disabled={imageFiles.length > 0}
         />
 
         <Button
           onClick={handlePasteText}
-          disabled={!!imagePreview}
+          disabled={imageFiles.length > 0}
           variant="secondary"
           className="cursor-pointer w-full"
         >
@@ -202,29 +221,39 @@ export default function InsertContentComponent({
           Image Content
         </label>
 
-        {imagePreview ? (
+        {imageFiles.length > 0 ? (
           <div className="space-y-2">
-            <div className="relative border border-border rounded-md p-2 bg-card">
-              <Button
-                onClick={handleRemoveImage}
-                variant="destructive"
-                size="icon"
-                className="absolute top-1 right-1 p-1 rounded-full cursor-pointer"
-                aria-label="Remove image"
-              >
-                <X />
-              </Button>
-              <Image
-                src={imagePreview}
-                alt="Preview"
-                width={0}
-                height={0}
-                sizes="100vw"
-                className="w-full max-h-32 object-contain rounded"
-              />
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+              {imageFiles.map((imageFile) => (
+                <div
+                  key={imageFile.id}
+                  className="relative border border-border rounded-md p-2 bg-card group"
+                >
+                  <Button
+                    onClick={() => handleRemoveImage(imageFile.id)}
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-1 right-1 p-1 rounded-full cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label="Remove image"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                  <Image
+                    src={imageFile.preview}
+                    alt="Preview"
+                    width={0}
+                    height={0}
+                    sizes="100vw"
+                    className="w-full h-20 object-cover rounded"
+                  />
+                  <p className="text-xs text-muted-foreground truncate mt-1">
+                    {imageFile.file.name}
+                  </p>
+                </div>
+              ))}
             </div>
             <p className="text-xs text-muted-foreground">
-              {selectedFile?.name || "Pasted image"}
+              {imageFiles.length} image{imageFiles.length !== 1 ? 's' : ''} selected
             </p>
           </div>
         ) : (
@@ -245,7 +274,7 @@ export default function InsertContentComponent({
               className="h-auto py-3 flex-col cursor-pointer flex items-center justify-center"
             >
               <Upload />
-              Upload Image
+              Upload Images
             </Button>
           </div>
         )}
@@ -255,6 +284,7 @@ export default function InsertContentComponent({
           ref={fileInputRef}
           type="file"
           accept="image/*"
+          multiple
           onChange={handleFileUpload}
           className="hidden"
         />

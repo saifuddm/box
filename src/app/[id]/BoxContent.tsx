@@ -63,11 +63,11 @@ export default function BoxContent({
   const handleContentSubmit = async (content: {
     type: "text" | "image" | "empty";
     data: string | null;
-    file?: File;
+    files?: File[];
   }) => {
     console.log("Content submitted:", content);
 
-    if (content.type === "empty" || !content.data) {
+    if (content.type === "empty" || (!content.data && !content.files?.length)) {
       // Close the drawer when empty content is submitted
       setIsDrawerOpen(false);
       return;
@@ -81,7 +81,7 @@ export default function BoxContent({
         // Save text content to the database
         const { error } = await supabase.from("TextContent").insert({
           box: boxId,
-          content: content.data,
+          content: content.data!,
         });
 
         if (error) {
@@ -93,43 +93,78 @@ export default function BoxContent({
         // Add to local state with the database ID
         const newContent = {
           id: crypto.randomUUID(),
-          content: content.data,
+          content: content.data!,
           type: content.type,
         };
 
         setContent((prev) => [...prev, newContent]);
-      } else if (content.type === "image") {
-        //Convert file to base64
-        const base64 = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.readAsDataURL(content.file!);
+      } else if (content.type === "image" && content.files) {
+        // Handle multiple image uploads in parallel
+        const uploadPromises = content.files.map(async (file) => {
+          try {
+            // Convert file to base64
+            const base64 = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.readAsDataURL(file);
+            });
+
+            const { error } = await supabase.functions.invoke("upload-image", {
+              method: "POST",
+              body: JSON.stringify({
+                boxId,
+                name: file.name,
+                base64Data: base64,
+                mimeType: file.type,
+              }),
+            });
+
+            if (error) {
+              console.error(`Error uploading image ${file.name}:`, error);
+              return { success: false, file, error: error.message };
+            }
+
+            return { success: true, file, base64 };
+          } catch (err) {
+            console.error(`Unexpected error uploading image ${file.name}:`, err);
+            return { success: false, file, error: "Unexpected error occurred" };
+          }
         });
 
-        const { error } = await supabase.functions.invoke("upload-image", {
-          method: "POST",
-          body: JSON.stringify({
-            boxId,
-            name: content.file?.name,
-            base64Data: base64,
-            mimeType: content.file?.type,
-          }),
-        });
+        // Wait for all uploads to complete
+        const results = await Promise.all(uploadPromises);
+        
+        // Separate successful and failed uploads
+        const successfulUploads = results.filter(result => result.success);
+        const failedUploads = results.filter(result => !result.success);
 
-        if (error) {
-          console.error("Error uploading image:", error);
-          setSubmitError("Failed to upload image. Please try again.");
-          return;
+        // Add successful uploads to local state
+        if (successfulUploads.length > 0) {
+          const newContentItems = successfulUploads.map((result) => ({
+            id: crypto.randomUUID(),
+            content: result.base64!,
+            type: content.type,
+            file: result.file,
+          }));
+
+          setContent((prev) => [...prev, ...newContentItems]);
         }
 
-        const newContent = {
-          id: crypto.randomUUID(),
-          content: content.data,
-          type: content.type,
-          file: content.file,
-        };
-
-        setContent((prev) => [...prev, newContent]);
+        // Handle errors
+        if (failedUploads.length > 0) {
+          const errorMessages = failedUploads.map(result => 
+            `${result.file.name}: ${result.error}`
+          ).join(', ');
+          
+          if (successfulUploads.length === 0) {
+            // All uploads failed
+            setSubmitError(`Failed to upload images: ${errorMessages}`);
+            return;
+          } else {
+            // Some uploads failed, show partial success message
+            setSubmitError(`Some images failed to upload: ${errorMessages}. ${successfulUploads.length} image(s) uploaded successfully.`);
+          }
+        }
       }
 
       // Close the drawer on successful save

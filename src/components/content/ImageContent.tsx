@@ -3,7 +3,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Button } from "../ui/button";
 import { createClient } from "@/utils/supabase/client";
 import Image from "next/image";
-import { copyImageToClipboard } from "@/utils/imageClipboard";
+import { copyImageToClipboard, getMobileClipboardInfo } from "@/utils/imageClipboard";
 
 interface ImageContentProps {
   id: string;
@@ -45,12 +45,23 @@ function ImageContent({ id, src, alt, fromSupabase }: ImageContentProps) {
   async function handleCopyImage() {
     setIsCopying(true);
 
+    // Check mobile clipboard capabilities
+    const clipboardInfo = getMobileClipboardInfo();
+    
+    if (clipboardInfo.requiresHttps) {
+      console.warn("HTTPS required for clipboard operations on mobile");
+    }
+
     await copyImageToClipboard(sourceUrl, {
       onSuccess: () => {
         console.log("Image copied successfully");
       },
       onError: (error) => {
         console.error("Copy failed:", error.message);
+        // Show more specific error for mobile users
+        if (clipboardInfo.isMobile && clipboardInfo.requiresHttps) {
+          console.warn("Mobile clipboard requires HTTPS connection");
+        }
       },
       onFallback: () => {
         console.log("Fallback: Image URL copied instead");
@@ -60,7 +71,7 @@ function ImageContent({ id, src, alt, fromSupabase }: ImageContentProps) {
     setIsCopying(false);
   }
 
-  useEffect(() => {
+  useEffect(() => { 
     console.log(
       `ImageContent useEffect - fromSupabase: ${fromSupabase}, src: ${src}`
     );

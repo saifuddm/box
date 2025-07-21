@@ -2,12 +2,34 @@
  * Utility for copying images to clipboard with comprehensive format support
  * Supports PNG, JPEG, WebP, GIF, and other formats with automatic conversion
  * Preserves original image dimensions and provides fallback to URL copying
+ * Enhanced mobile support with proper fallbacks and error handling
  */
 
 interface CopyImageOptions {
   onSuccess?: () => void;
   onError?: (error: Error) => void;
   onFallback?: () => void;
+}
+
+/**
+ * Detects if the current environment is mobile
+ */
+function isMobile(): boolean {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  );
+}
+
+/**
+ * Checks if the current context supports clipboard operations
+ */
+function canUseClipboard(): boolean {
+  return !!(
+    navigator.clipboard && 
+    window.ClipboardItem && 
+    // Mobile browsers require HTTPS
+    (window.location.protocol === 'https:' || window.location.hostname === 'localhost')
+  );
 }
 
 /**
@@ -22,16 +44,23 @@ export async function copyImageToClipboard(
 ): Promise<boolean> {
   const { onSuccess, onError, onFallback } = options;
 
-  // Check if clipboard API is available
-  if (!navigator.clipboard || !window.ClipboardItem) {
-    console.warn("Clipboard API not supported, falling back to URL copy");
+  // Check if clipboard API is available and supported
+  if (!canUseClipboard()) {
+    console.warn("Clipboard API not supported or not available (HTTPS required on mobile), falling back to URL copy");
     await fallbackToCopyUrl(imageUrl, onFallback);
     return false;
   }
 
+  // On mobile, we need to be more conservative with image sizes
+  const maxCanvasSize = isMobile() ? 1024 : 2048;
+
   try {
     // Fetch the image as a blob
-    const response = await fetch(imageUrl);
+    const response = await fetch(imageUrl, {
+      mode: 'cors',
+      credentials: 'omit'
+    });
+    
     if (!response.ok) {
       throw new Error(`Failed to fetch image: ${response.statusText}`);
     }
@@ -76,7 +105,7 @@ export async function copyImageToClipboard(
         `Converting ${originalBlob.type} to PNG for clipboard compatibility`
       );
 
-      const pngBlob = await convertImageToPng(imageUrl);
+      const pngBlob = await convertImageToPng(imageUrl, maxCanvasSize);
 
       const clipboardItem = new ClipboardItem({
         "image/png": pngBlob,
@@ -103,9 +132,10 @@ export async function copyImageToClipboard(
 /**
  * Converts an image to PNG format while preserving original dimensions
  * @param imageUrl - The URL of the image to convert
+ * @param maxSize - Maximum canvas size (for mobile optimization)
  * @returns Promise<Blob> - The converted PNG blob
  */
-async function convertImageToPng(imageUrl: string): Promise<Blob> {
+async function convertImageToPng(imageUrl: string, maxSize: number = 2048): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
@@ -121,20 +151,26 @@ async function convertImageToPng(imageUrl: string): Promise<Blob> {
 
     img.onload = () => {
       try {
-        // Use original image dimensions (not displayed size)
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
+        // Calculate dimensions while respecting max size
+        let { width, height } = calculateDimensions(
+          img.naturalWidth, 
+          img.naturalHeight, 
+          maxSize
+        );
+
+        canvas.width = width;
+        canvas.height = height;
 
         console.log(
-          `Converting image: ${img.naturalWidth}x${img.naturalHeight}`
+          `Converting image: ${img.naturalWidth}x${img.naturalHeight} -> ${width}x${height}`
         );
 
         // Clear canvas with white background (important for transparent images)
         ctx.fillStyle = "#FFFFFF";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Draw image at original size
-        ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight);
+        // Draw image with calculated dimensions
+        ctx.drawImage(img, 0, 0, width, height);
 
         // Convert to PNG blob with high quality
         canvas.toBlob(
@@ -165,6 +201,25 @@ async function convertImageToPng(imageUrl: string): Promise<Blob> {
     // Start loading the image
     img.src = imageUrl;
   });
+}
+
+/**
+ * Calculates optimal dimensions while respecting maximum size
+ */
+function calculateDimensions(
+  originalWidth: number, 
+  originalHeight: number, 
+  maxSize: number
+): { width: number; height: number } {
+  if (originalWidth <= maxSize && originalHeight <= maxSize) {
+    return { width: originalWidth, height: originalHeight };
+  }
+
+  const ratio = Math.min(maxSize / originalWidth, maxSize / originalHeight);
+  return {
+    width: Math.round(originalWidth * ratio),
+    height: Math.round(originalHeight * ratio)
+  };
 }
 
 /**
@@ -206,7 +261,7 @@ async function fallbackToCopyUrl(
  * @returns boolean
  */
 export function canCopyImagesToClipboard(): boolean {
-  return !!(navigator.clipboard && window.ClipboardItem);
+  return canUseClipboard();
 }
 
 /**
@@ -224,4 +279,22 @@ export function getSupportedImageFormats(): string[] {
     "image/tiff", // Converted to PNG
     "image/svg+xml", // Converted to PNG
   ];
+}
+
+/**
+ * Gets mobile-specific clipboard information
+ * @returns object with mobile clipboard capabilities
+ */
+export function getMobileClipboardInfo(): {
+  isMobile: boolean;
+  supportsClipboard: boolean;
+  requiresHttps: boolean;
+  maxCanvasSize: number;
+} {
+  return {
+    isMobile: isMobile(),
+    supportsClipboard: canUseClipboard(),
+    requiresHttps: isMobile() && window.location.protocol !== 'https:' && window.location.hostname !== 'localhost',
+    maxCanvasSize: isMobile() ? 1024 : 2048
+  };
 }
