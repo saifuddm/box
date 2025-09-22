@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/client";
-import { DownloadIcon, Loader2, ViewIcon } from "lucide-react";
+import { DownloadIcon, Loader2 } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { Button } from "../ui/button";
 
