@@ -16,7 +16,7 @@ function TextContent({ id, content }: TextContentProps) {
         <Button
           variant="outline"
           size="icon"
-          className="w-4 h-4 cursor-pointer hover:text-primary transition-colors"
+          className="cursor-pointer hover:text-primary transition-colors"
           onClick={() => {
             navigator.clipboard.writeText(content);
           }}

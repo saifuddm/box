@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { path } = await req.json();
+    const { path, uploadType } = await req.json();
 
     // Create Supabase client with service role key for database access
     const supabaseClient = createClient(
@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
     // Create signed URL
     const { data: signedUrl, error: signedUrlError } =
       await supabaseClient.storage
-        .from("image-content")
+        .from(uploadType === "image" ? "image-content" : "file-content")
         .createSignedUrl(path, 3600);
 
     if (signedUrlError) {

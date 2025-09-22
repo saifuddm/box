@@ -13,9 +13,10 @@ import { Button } from "@/components/ui/button";
 import TextContent from "@/components/content/TextContent";
 import ImageContent from "@/components/content/ImageContent";
 import { createClient } from "@/utils/supabase/client";
-import { HomeIcon, PlusCircleIcon } from "lucide-react";
+import { HomeIcon, Loader2, PlusCircleIcon } from "lucide-react";
 import BoxShareButton from "@/components/BoxShareButton";
 import Link from "next/link";
+import FileContent from "@/components/content/FileContent";
 
 interface BoxContentProps {
   boxId: string;
@@ -221,7 +222,17 @@ export default function BoxContent({
           />
         );
       } else if (item.type === "file") {
-        contentElement = <h1 key={item.id}>{item.content.split("/").pop()}</h1>;
+        contentElement = (
+          <FileContent
+            key={item.id}
+            id={item.id}
+            src={item.file ? URL.createObjectURL(item.file) : item.content}
+            alt={
+              item.file ? item.file.name : item.content.split("/").pop() || ""
+            }
+            fromSupabase={item.fromSupabase}
+          />
+        );
       } else {
         return; // Skip empty content
       }
@@ -266,22 +277,32 @@ export default function BoxContent({
           </DrawerTrigger>
           <DrawerContent>
             <DrawerHeader>
-              <DrawerTitle>Add New Content</DrawerTitle>
+              <DrawerTitle>
+                {isSubmitting ? "Adding Content" : "Add New Content"}
+              </DrawerTitle>
               <DrawerDescription>
-                Add text or image content to your box.
+                {isSubmitting
+                  ? "Adding content to your box."
+                  : "Add text or image content to your box."}
               </DrawerDescription>
             </DrawerHeader>
-            <div className="px-4 pb-4 overflow-y-auto flex-1">
-              {submitError && (
-                <div className=" text-sm p-2 border border-maroon rounded bg-maroon/10 text-maroon">
-                  {submitError}
-                </div>
-              )}
-              <InsertContentComponent
-                onSubmit={handleContentSubmit}
-                onClose={handleDrawerClose}
-              />
-            </div>
+            {isSubmitting ? (
+              <div className="px-4 pb-4 flex justify-center items-center flex-1">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="px-4 pb-4 overflow-y-auto flex-1">
+                {submitError && (
+                  <div className=" text-sm p-2 border border-maroon rounded bg-maroon/10 text-maroon">
+                    {submitError}
+                  </div>
+                )}
+                <InsertContentComponent
+                  onSubmit={handleContentSubmit}
+                  onClose={handleDrawerClose}
+                />
+              </div>
+            )}
           </DrawerContent>
         </Drawer>
         <BoxShareButton boxName={boxName} boxId={boxId} />

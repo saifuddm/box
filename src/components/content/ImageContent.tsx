@@ -3,7 +3,10 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Button } from "../ui/button";
 import { createClient } from "@/utils/supabase/client";
 import Image from "next/image";
-import { copyImageToClipboard, getMobileClipboardInfo } from "@/utils/imageClipboard";
+import {
+  copyImageToClipboard,
+  getMobileClipboardInfo,
+} from "@/utils/imageClipboard";
 
 interface ImageContentProps {
   id: string;
@@ -26,7 +29,7 @@ function ImageContent({ id, src, alt, fromSupabase }: ImageContentProps) {
       const { data: signedUrl, error: signedUrlError } =
         await supabase.functions.invoke("get-storage-content", {
           method: "POST",
-          body: JSON.stringify({ path: src }),
+          body: JSON.stringify({ path: src, uploadType: "image" }),
         });
 
       if (signedUrlError) {
@@ -47,7 +50,7 @@ function ImageContent({ id, src, alt, fromSupabase }: ImageContentProps) {
 
     // Check mobile clipboard capabilities
     const clipboardInfo = getMobileClipboardInfo();
-    
+
     if (clipboardInfo.requiresHttps) {
       console.warn("HTTPS required for clipboard operations on mobile");
     }
@@ -71,7 +74,7 @@ function ImageContent({ id, src, alt, fromSupabase }: ImageContentProps) {
     setIsCopying(false);
   }
 
-  useEffect(() => { 
+  useEffect(() => {
     console.log(
       `ImageContent useEffect - fromSupabase: ${fromSupabase}, src: ${src}`
     );
@@ -119,12 +122,12 @@ function ImageContent({ id, src, alt, fromSupabase }: ImageContentProps) {
         <Button
           variant="outline"
           size="icon"
-          className="w-4 h-4 cursor-pointer hover:text-primary transition-colors"
+          className="cursor-pointer hover:text-primary transition-colors"
           onClick={handleCopyImage}
-          disabled={isCopying || isLoading}
+          disabled={isCopying || isLoading || error !== null}
         >
           {isCopying ? (
-            <Loader2 className="w-3 h-3 animate-spin" />
+            <Loader2 className=" animate-spin" />
           ) : (
             <ClipboardIcon />
           )}
