@@ -25,10 +25,11 @@ function isMobile(): boolean {
  */
 function canUseClipboard(): boolean {
   return !!(
-    navigator.clipboard && 
-    window.ClipboardItem && 
+    navigator.clipboard &&
+    window.ClipboardItem &&
     // Mobile browsers require HTTPS
-    (window.location.protocol === 'https:' || window.location.hostname === 'localhost')
+    (window.location.protocol === "https:" ||
+      window.location.hostname === "localhost")
   );
 }
 
@@ -46,7 +47,9 @@ export async function copyImageToClipboard(
 
   // Check if clipboard API is available and supported
   if (!canUseClipboard()) {
-    console.warn("Clipboard API not supported or not available (HTTPS required on mobile), falling back to URL copy");
+    console.warn(
+      "Clipboard API not supported or not available (HTTPS required on mobile), falling back to URL copy"
+    );
     await fallbackToCopyUrl(imageUrl, onFallback);
     return false;
   }
@@ -57,10 +60,10 @@ export async function copyImageToClipboard(
   try {
     // Fetch the image as a blob
     const response = await fetch(imageUrl, {
-      mode: 'cors',
-      credentials: 'omit'
+      mode: "cors",
+      credentials: "omit",
     });
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch image: ${response.statusText}`);
     }
@@ -135,7 +138,10 @@ export async function copyImageToClipboard(
  * @param maxSize - Maximum canvas size (for mobile optimization)
  * @returns Promise<Blob> - The converted PNG blob
  */
-async function convertImageToPng(imageUrl: string, maxSize: number = 2048): Promise<Blob> {
+async function convertImageToPng(
+  imageUrl: string,
+  maxSize: number = 2048
+): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
@@ -152,9 +158,9 @@ async function convertImageToPng(imageUrl: string, maxSize: number = 2048): Prom
     img.onload = () => {
       try {
         // Calculate dimensions while respecting max size
-        let { width, height } = calculateDimensions(
-          img.naturalWidth, 
-          img.naturalHeight, 
+        const { width, height } = calculateDimensions(
+          img.naturalWidth,
+          img.naturalHeight,
           maxSize
         );
 
@@ -207,8 +213,8 @@ async function convertImageToPng(imageUrl: string, maxSize: number = 2048): Prom
  * Calculates optimal dimensions while respecting maximum size
  */
 function calculateDimensions(
-  originalWidth: number, 
-  originalHeight: number, 
+  originalWidth: number,
+  originalHeight: number,
   maxSize: number
 ): { width: number; height: number } {
   if (originalWidth <= maxSize && originalHeight <= maxSize) {
@@ -218,7 +224,7 @@ function calculateDimensions(
   const ratio = Math.min(maxSize / originalWidth, maxSize / originalHeight);
   return {
     width: Math.round(originalWidth * ratio),
-    height: Math.round(originalHeight * ratio)
+    height: Math.round(originalHeight * ratio),
   };
 }
 
@@ -294,7 +300,10 @@ export function getMobileClipboardInfo(): {
   return {
     isMobile: isMobile(),
     supportsClipboard: canUseClipboard(),
-    requiresHttps: isMobile() && window.location.protocol !== 'https:' && window.location.hostname !== 'localhost',
-    maxCanvasSize: isMobile() ? 1024 : 2048
+    requiresHttps:
+      isMobile() &&
+      window.location.protocol !== "https:" &&
+      window.location.hostname !== "localhost",
+    maxCanvasSize: isMobile() ? 1024 : 2048,
   };
 }

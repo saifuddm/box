@@ -55,6 +55,24 @@ async function fetchImageContent(supabaseClient: any, boxId: string) {
   }));
 }
 
+// Helper function to fetch file content for a box
+async function fetchFileContent(supabaseClient: any, boxId: string) {
+  const { data, error } = await supabaseClient
+    .from("FileContent")
+    .select("id, content, created_at")
+    .eq("box", boxId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to fetch file content: ${error.message}`);
+  }
+
+  return data.map((content: any) => ({
+    ...content,
+    type: "file",
+  }));
+}
+
 console.log("Hello from Get Box Content!");
 
 Deno.serve(async (req) => {
@@ -134,17 +152,20 @@ Deno.serve(async (req) => {
     }
 
     // If we reach here, either the box is not protected or password is correct
-    // Fetch both text and image content in parallel
+    // Fetch both text, image and file content in parallel
 
-    const [textContent, imageContent] = await Promise.all([
+    const [textContent, imageContent, fileContent] = await Promise.all([
       fetchTextContent(supabaseClient, boxId),
       fetchImageContent(supabaseClient, boxId),
+      fetchFileContent(supabaseClient, boxId),
     ]);
 
     // Combine and sort by created_at
-    const contentWithType = [...textContent, ...imageContent].sort((a, b) =>
-      a.created_at.localeCompare(b.created_at)
-    );
+    const contentWithType = [
+      ...textContent,
+      ...imageContent,
+      ...fileContent,
+    ].sort((a, b) => a.created_at.localeCompare(b.created_at));
 
     // Return the content
     return new Response(

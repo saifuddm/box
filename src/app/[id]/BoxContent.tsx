@@ -23,7 +23,7 @@ interface BoxContentProps {
   initialContent: Array<{
     id: string;
     content: string;
-    type: "text" | "image" | "empty";
+    type: "text" | "image" | "empty" | "file";
     created_at: string;
   }>;
 }
@@ -40,7 +40,7 @@ export default function BoxContent({
     {
       id: string;
       content: string;
-      type: "text" | "image" | "empty";
+      type: "text" | "image" | "empty" | "file";
       file?: File;
       fromSupabase?: boolean;
     }[]
@@ -61,7 +61,7 @@ export default function BoxContent({
   }, [initialContent]);
 
   const handleContentSubmit = async (content: {
-    type: "text" | "image" | "empty";
+    type: "text" | "image" | "empty" | "file";
     data: string | null;
     files?: File[];
   }) => {
@@ -98,8 +98,11 @@ export default function BoxContent({
         };
 
         setContent((prev) => [...prev, newContent]);
-      } else if (content.type === "image" && content.files) {
-        // Handle multiple image uploads in parallel
+      } else if (
+        (content.type === "image" || content.type === "file") &&
+        content.files
+      ) {
+        // Handle multiple uploads in parallel
         const uploadPromises = content.files.map(async (file) => {
           try {
             // Convert file to base64
@@ -108,16 +111,21 @@ export default function BoxContent({
               reader.onload = () => resolve(reader.result as string);
               reader.readAsDataURL(file);
             });
+            const uploadType = content.type === "image" ? "image" : "file";
 
-            const { error } = await supabase.functions.invoke("upload-image", {
-              method: "POST",
-              body: JSON.stringify({
-                boxId,
-                name: file.name,
-                base64Data: base64,
-                mimeType: file.type,
-              }),
-            });
+            const { error } = await supabase.functions.invoke(
+              "upload-content",
+              {
+                method: "POST",
+                body: JSON.stringify({
+                  boxId,
+                  name: file.name,
+                  base64Data: base64,
+                  mimeType: file.type,
+                  uploadType: uploadType,
+                }),
+              }
+            );
 
             if (error) {
               console.error(`Error uploading image ${file.name}:`, error);
@@ -126,17 +134,20 @@ export default function BoxContent({
 
             return { success: true, file, base64 };
           } catch (err) {
-            console.error(`Unexpected error uploading image ${file.name}:`, err);
+            console.error(
+              `Unexpected error uploading image ${file.name}:`,
+              err
+            );
             return { success: false, file, error: "Unexpected error occurred" };
           }
         });
 
         // Wait for all uploads to complete
         const results = await Promise.all(uploadPromises);
-        
+
         // Separate successful and failed uploads
-        const successfulUploads = results.filter(result => result.success);
-        const failedUploads = results.filter(result => !result.success);
+        const successfulUploads = results.filter((result) => result.success);
+        const failedUploads = results.filter((result) => !result.success);
 
         // Add successful uploads to local state
         if (successfulUploads.length > 0) {
@@ -152,17 +163,19 @@ export default function BoxContent({
 
         // Handle errors
         if (failedUploads.length > 0) {
-          const errorMessages = failedUploads.map(result => 
-            `${result.file.name}: ${result.error}`
-          ).join(', ');
-          
+          const errorMessages = failedUploads
+            .map((result) => `${result.file.name}: ${result.error}`)
+            .join(", ");
+
           if (successfulUploads.length === 0) {
             // All uploads failed
-            setSubmitError(`Failed to upload images: ${errorMessages}`);
+            setSubmitError(`Failed to upload: ${errorMessages}`);
             return;
           } else {
             // Some uploads failed, show partial success message
-            setSubmitError(`Some images failed to upload: ${errorMessages}. ${successfulUploads.length} image(s) uploaded successfully.`);
+            setSubmitError(
+              `Some files failed to upload: ${errorMessages}. ${successfulUploads.length} file(s) uploaded successfully.`
+            );
           }
         }
       }
@@ -207,6 +220,8 @@ export default function BoxContent({
             fromSupabase={item.fromSupabase}
           />
         );
+      } else if (item.type === "file") {
+        contentElement = <h1 key={item.id}>{item.content.split("/").pop()}</h1>;
       } else {
         return; // Skip empty content
       }

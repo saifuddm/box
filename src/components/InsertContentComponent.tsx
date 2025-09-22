@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Clipboard, Upload, X, Plus } from "lucide-react";
+import { Clipboard, Upload, X, Plus, FileIcon } from "lucide-react";
 import Image from "next/image";
 import {
   AlertDialog,
@@ -17,7 +17,7 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 
-interface ImageFile {
+interface FileType {
   file: File;
   preview: string;
   id: string;
@@ -25,7 +25,7 @@ interface ImageFile {
 
 interface InsertContentComponentProps {
   onSubmit?: (content: {
-    type: "text" | "image" | "empty";
+    type: "text" | "image" | "empty" | "file";
     data: string | null;
     files?: File[];
   }) => void;
@@ -37,8 +37,10 @@ export default function InsertContentComponent({
   onClose,
 }: InsertContentComponentProps) {
   const [textContent, setTextContent] = useState("");
-  const [imageFiles, setImageFiles] = useState<ImageFile[]>([]);
+  const [imageFiles, setImageFiles] = useState<FileType[]>([]);
+  const [fileFiles, setFileFiles] = useState<FileType[]>([]);
   const [showEmptyContentDialog, setShowEmptyContentDialog] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handlePasteText = async () => {
@@ -62,13 +64,14 @@ export default function InsertContentComponent({
             const blob = await clipboardItem.getType(type);
             const file = new File([blob], "pasted-image.png", { type });
             const previewUrl = URL.createObjectURL(blob);
-            const newImageFile: ImageFile = {
+            const newImageFile: FileType = {
               file,
               preview: previewUrl,
-              id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+              id:
+                Date.now().toString() + Math.random().toString(36).substr(2, 9),
             };
 
-            setImageFiles(prev => [...prev, newImageFile]);
+            setImageFiles((prev) => [...prev, newImageFile]);
             setTextContent("");
             return;
           }
@@ -87,40 +90,63 @@ export default function InsertContentComponent({
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files) {
-      const newImageFiles: ImageFile[] = [];
-      
+      const newImageFiles: FileType[] = [];
+      const newFileFiles: FileType[] = [];
+
       Array.from(files).forEach((file) => {
+        const previewUrl = URL.createObjectURL(file);
         if (file.type.startsWith("image/")) {
-          const previewUrl = URL.createObjectURL(file);
-          const newImageFile: ImageFile = {
+          const newImageFile: FileType = {
             file,
             preview: previewUrl,
             id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
           };
           newImageFiles.push(newImageFile);
+        } else {
+          const newFileFile: FileType = {
+            file,
+            preview: previewUrl,
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          };
+          newFileFiles.push(newFileFile);
         }
       });
 
       if (newImageFiles.length > 0) {
-        setImageFiles(prev => [...prev, ...newImageFiles]);
+        setImageFiles((prev) => [...prev, ...newImageFiles]);
         setTextContent("");
+      } else if (newFileFiles.length > 0) {
+        setFileFiles((prev) => [...prev, ...newFileFiles]);
       } else {
         alert("Please select valid image files");
       }
     }
   };
 
-  const handleUploadClick = () => {
+  const handleImageUploadClick = () => {
+    imageInputRef.current?.click();
+  };
+
+  const handleFileUploadClick = () => {
     fileInputRef.current?.click();
   };
 
   const handleRemoveImage = (id: string) => {
-    setImageFiles(prev => {
-      const imageToRemove = prev.find(img => img.id === id);
+    setImageFiles((prev) => {
+      const imageToRemove = prev.find((img) => img.id === id);
       if (imageToRemove) {
         URL.revokeObjectURL(imageToRemove.preview);
       }
-      return prev.filter(img => img.id !== id);
+      return prev.filter((img) => img.id !== id);
+    });
+  };
+  const handleRemoveFile = (id: string) => {
+    setFileFiles((prev) => {
+      const fileToRemove = prev.find((file) => file.id === id);
+      if (fileToRemove) {
+        URL.revokeObjectURL(fileToRemove.preview);
+      }
+      return prev.filter((file) => file.id !== id);
     });
   };
 
@@ -129,12 +155,18 @@ export default function InsertContentComponent({
       onSubmit?.({
         type: "image",
         data: null,
-        files: imageFiles.map(img => img.file),
+        files: imageFiles.map((img) => img.file),
       });
     } else if (textContent.trim()) {
       onSubmit?.({
         type: "text",
         data: textContent.trim(),
+      });
+    } else if (fileFiles.length > 0) {
+      onSubmit?.({
+        type: "file",
+        data: null,
+        files: fileFiles.map((file) => file.file),
       });
     } else {
       // Show alert dialog when no content
@@ -157,15 +189,21 @@ export default function InsertContentComponent({
   const handleClear = () => {
     setTextContent("");
     // Clean up preview URLs
-    imageFiles.forEach(img => URL.revokeObjectURL(img.preview));
+    imageFiles.forEach((img) => URL.revokeObjectURL(img.preview));
     setImageFiles([]);
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+    fileFiles.forEach((file) => URL.revokeObjectURL(file.preview));
+    setFileFiles([]);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
   const handleCloseOrClear = () => {
-    const hasContent = textContent.trim() || imageFiles.length > 0;
+    const hasContent =
+      textContent.trim() || imageFiles.length > 0 || fileFiles.length > 0;
     if (hasContent) {
       handleClear();
     } else {
@@ -173,7 +211,8 @@ export default function InsertContentComponent({
     }
   };
 
-  const hasContent = textContent.trim() || imageFiles.length > 0;
+  const hasContent =
+    textContent.trim() || imageFiles.length > 0 || fileFiles.length > 0;
 
   return (
     <div className="space-y-4">
@@ -253,7 +292,8 @@ export default function InsertContentComponent({
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
-              {imageFiles.length} image{imageFiles.length !== 1 ? 's' : ''} selected
+              {imageFiles.length} image{imageFiles.length !== 1 ? "s" : ""}{" "}
+              selected
             </p>
           </div>
         ) : (
@@ -268,7 +308,7 @@ export default function InsertContentComponent({
               Paste Image
             </Button>
             <Button
-              onClick={handleUploadClick}
+              onClick={handleImageUploadClick}
               disabled={!!textContent.trim()}
               variant="secondary"
               className="h-auto py-3 flex-col cursor-pointer flex items-center justify-center"
@@ -279,15 +319,74 @@ export default function InsertContentComponent({
           </div>
         )}
 
-        {/* Hidden file input */}
+        {/* Hidden image input */}
         <Input
-          ref={fileInputRef}
+          ref={imageInputRef}
           type="file"
           accept="image/*"
           multiple
           onChange={handleFileUpload}
           className="hidden"
         />
+      </div>
+
+      {/* File Section */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-foreground">
+          File Content
+        </label>
+        {fileFiles.length > 0 ? (
+          <div className="space-y-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+              {fileFiles.map((fileFiles) => (
+                <div
+                  key={fileFiles.id}
+                  className="relative border border-border rounded-md p-2 bg-card group"
+                >
+                  <Button
+                    onClick={() => handleRemoveFile(fileFiles.id)}
+                    variant="destructive"
+                    size="icon"
+                    className="absolute top-1 right-1 p-1 rounded-full cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label="Remove file"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+
+                  <a href={fileFiles.preview} target="_blank">
+                    <FileIcon className="h-3 w-3" />
+                  </a>
+
+                  <p className="text-xs text-muted-foreground truncate mt-1">
+                    {fileFiles.file.name}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              onClick={handleFileUploadClick}
+              disabled={!!textContent.trim() || imageFiles.length > 0}
+              variant="secondary"
+              className="h-auto py-3 flex-col cursor-pointer flex items-center justify-center"
+            >
+              <Upload />
+              Upload Files
+            </Button>
+
+            {/* Hidden file input */}
+            <Input
+              ref={fileInputRef}
+              type="file"
+              accept="*/*"
+              multiple
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+          </div>
+        )}
       </div>
 
       {/* Action Buttons */}

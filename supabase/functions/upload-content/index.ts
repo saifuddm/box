@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { boxId, name, base64Data, mimeType } = await req.json();
+    const { boxId, name, base64Data, mimeType, uploadType } = await req.json();
 
     //Validate input
     if (!boxId || typeof boxId !== "string") {
@@ -39,6 +39,18 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (!uploadType || (uploadType !== "image" && uploadType !== "file")) {
+      return new Response(
+        JSON.stringify({
+          error: "Upload type is required and must be either image or file",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     // Convert base64 to blob
     const base64Response = await fetch(base64Data);
     const blob = await base64Response.blob();
@@ -49,37 +61,18 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // First, upload the image to the storage bucket
+    // First, upload to the storage bucket
     const { data: uploadData, error: uploadError } =
       await supabaseClient.storage
-        .from("image-content")
+        .from(uploadType === "image" ? "image-content" : "file-content")
         .upload(`${boxId}/${name}`, blob, {
           contentType: mimeType,
         });
 
     if (uploadError) {
-      console.error("Error uploading image:", uploadError);
-      return new Response(JSON.stringify({ error: "Failed to upload image" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Second, insert imageContent into the database
-    const { data: imageContent, error: imageContentError } =
-      await supabaseClient
-        .from("ImageContent")
-        .insert({
-          box: boxId,
-          content: uploadData.path,
-        })
-        .select("id, content, created_at")
-        .single();
-
-    if (imageContentError) {
-      console.error("Error inserting imageContent:", imageContentError);
+      console.error("Error uploading:", uploadError);
       return new Response(
-        JSON.stringify({ error: "Failed to insert imageContent" }),
+        JSON.stringify({ error: "Failed to upload to storage" }),
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -87,26 +80,35 @@ Deno.serve(async (req) => {
       );
     }
 
-    return new Response(JSON.stringify({ data: imageContent }), {
+    // Second, insert into the database
+    const { data: content, error: contentError } = await supabaseClient
+      .from(uploadType === "image" ? "ImageContent" : "FileContent")
+      .insert({
+        box: boxId,
+        content: uploadData.path,
+      })
+      .select("id, content, created_at")
+      .single();
+
+    if (contentError) {
+      console.error("Error inserting:", contentError);
+      return new Response(
+        JSON.stringify({ error: "Failed to insert into database" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    return new Response(JSON.stringify({ data: content }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("Error in upload-image function:", error);
+    console.error("Error in upload function:", error);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
-
-/* To invoke locally:
-
-  1. Run `supabase start` (see: https://supabase.com/docs/reference/cli/supabase-start)
-  2. Make an HTTP request:
-
-  curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/upload-image' \
-    --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' \
-    --header 'Content-Type: application/json' \
-    --data '{"name":"Functions"}'
-
-*/
