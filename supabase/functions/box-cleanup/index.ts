@@ -9,6 +9,64 @@ const corsHeaders = {
 
 console.log("Hello from Cleanup Expired Boxes!");
 
+// Helper function to delete files from storage
+async function deleteImageContent(supabaseClient: any, boxId: string) {
+  const { data: fileList, error: listError } = await supabaseClient.storage
+    .from("image-content")
+    .list(`${boxId}/`);
+
+  if (listError || !fileList || fileList.length === 0) {
+    console.warn(`Warning: Could not list files for box ${boxId}:`, listError);
+  }
+  // If there are files, delete them
+  const filePaths = fileList.map((file) => `${boxId}/${file.name}`);
+
+  const { error: deleteFilesError } = await supabaseClient.storage
+    .from("image-content")
+    .remove(filePaths);
+
+  if (deleteFilesError) {
+    console.warn(
+      `Warning: Could not delete files for box ${boxId}:`,
+      deleteFilesError
+    );
+    throw new Error(
+      `Could not delete files for box ${boxId}: ${deleteFilesError.message}`
+    );
+  } else {
+    console.log(`Deleted ${filePaths.length} files for box ${boxId}`);
+  }
+}
+
+// Helper function to delete files from storage
+async function deleteFileContent(supabaseClient: any, boxId: string) {
+  const { data: fileList, error: listError } = await supabaseClient.storage
+    .from("file-content")
+    .list(`${boxId}/`);
+
+  if (listError || !fileList || fileList.length === 0) {
+    console.warn(`Warning: Could not list files for box ${boxId}:`, listError);
+  }
+  // If there are files, delete them
+  const filePaths = fileList.map((file) => `${boxId}/${file.name}`);
+
+  const { error: deleteFilesError } = await supabaseClient.storage
+    .from("file-content")
+    .remove(filePaths);
+
+  if (deleteFilesError) {
+    console.warn(
+      `Warning: Could not delete files for box ${boxId}:`,
+      deleteFilesError
+    );
+    throw new Error(
+      `Could not delete files for box ${boxId}: ${deleteFilesError.message}`
+    );
+  } else {
+    console.log(`Deleted ${filePaths.length} files for box ${boxId}`);
+  }
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -24,7 +82,7 @@ Deno.serve(async (req) => {
 
     // Calculate the cutoff time (24 hours ago)
     const twentyFourHoursAgo = new Date();
-    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
+    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 23);
 
     console.log(
       `Looking for boxes created before: ${twentyFourHoursAgo.toISOString()}`
@@ -71,32 +129,8 @@ Deno.serve(async (req) => {
         console.log(`Processing box: ${box.id} (${box.name})`);
 
         // First, try to delete the storage folder for this box
-        const { data: fileList, error: listError } =
-          await supabaseClient.storage.from("image-content").list(`${box.id}/`);
-
-        if (listError) {
-          console.warn(
-            `Warning: Could not list files for box ${box.id}:`,
-            listError
-          );
-        } else if (fileList && fileList.length > 0) {
-          // If there are files, delete them
-          const filePaths = fileList.map((file) => `${box.id}/${file.name}`);
-
-          const { error: deleteFilesError } = await supabaseClient.storage
-            .from("image-content")
-            .remove(filePaths);
-
-          if (deleteFilesError) {
-            console.warn(
-              `Warning: Could not delete files for box ${box.id}:`,
-              deleteFilesError
-            );
-          } else {
-            console.log(`Deleted ${filePaths.length} files for box ${box.id}`);
-          }
-        }
-
+        await deleteImageContent(supabaseClient, box.id);
+        await deleteFileContent(supabaseClient, box.id);
         // Then delete the box record (this will cascade delete TextContent and ImageContent)
         const { error: deleteBoxError } = await supabaseClient
           .from("Box")
