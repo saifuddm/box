@@ -2,6 +2,7 @@ import React from "react";
 import { Button } from "./ui/button";
 import { ShareIcon } from "lucide-react";
 import { toast } from "sonner";
+import { QRCodeSVG } from "qrcode.react";
 
 interface BoxShareButtonProps {
   boxName: string;
@@ -39,6 +40,9 @@ function BoxShareButton({ boxName, boxId }: BoxShareButtonProps) {
           console.log("Link copied to clipboard");
           toast("Box link copied to clipboard", {
             description: "Share with your friends",
+          });
+          toast(<QRCodeSVG value={url} size={160} />, {
+            duration: 6000,
           });
         })
         .catch((error) => {
