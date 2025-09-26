@@ -17,6 +17,7 @@ async function deleteImageContent(supabaseClient: any, boxId: string) {
 
   if (listError || !fileList || fileList.length === 0) {
     console.warn(`Warning: Could not list files for box ${boxId}:`, listError);
+    return;
   }
   // If there are files, delete them
   const filePaths = fileList.map((file) => `${boxId}/${file.name}`);
@@ -46,6 +47,7 @@ async function deleteFileContent(supabaseClient: any, boxId: string) {
 
   if (listError || !fileList || fileList.length === 0) {
     console.warn(`Warning: Could not list files for box ${boxId}:`, listError);
+    return;
   }
   // If there are files, delete them
   const filePaths = fileList.map((file) => `${boxId}/${file.name}`);
