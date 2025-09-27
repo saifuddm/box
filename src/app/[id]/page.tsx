@@ -3,10 +3,11 @@ import { redirect } from "next/navigation";
 import PasswordDialog from "./PasswordDialog";
 import BoxContent from "./BoxContent";
 import { Metadata } from "next";
+import { cookies } from "next/headers";
 
 interface BoxPageProps {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ pass?: string; error?: string }>;
+  searchParams: Promise<{ error?: string }>;
 }
 
 export async function generateMetadata({
@@ -40,8 +41,6 @@ export async function generateMetadata({
 export default async function BoxPage({ params, searchParams }: BoxPageProps) {
   const resolvedParams = await params;
   const { id } = resolvedParams;
-  const resolvedSearchParams = await searchParams;
-  const { pass, error } = resolvedSearchParams;
 
   const supabase = await createClient();
 
@@ -57,9 +56,12 @@ export default async function BoxPage({ params, searchParams }: BoxPageProps) {
     redirect("/");
   }
 
-  // If box is password protected and (no password provided OR there's an error), show password dialog
+  // Read token cookie (if present)
+  const cookieStore = await cookies();
+  const token = cookieStore.get(`box_token_${id}`)?.value;
 
-  if (box.password_protected && (!pass || error)) {
+  // If box is password protected and no token, show password dialog
+  if (box.password_protected && !token) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <PasswordDialog boxId={id} />
@@ -67,21 +69,29 @@ export default async function BoxPage({ params, searchParams }: BoxPageProps) {
     );
   }
 
-  // Always call the edge function - it handles both protected and non-protected boxes
+  // Call the edge function to get the box content, attaching the token if present
   const { data: result, error: functionError } =
     await supabase.functions.invoke("get-box-content", {
-      body: { boxId: id, password: pass || "" },
+      body: { boxId: id },
+      headers: token ? { "x-box-token": token } : undefined,
     });
 
   if (functionError) {
     const message = await functionError.context.text();
-    const errorMessage = JSON.parse(message);
+    const status = functionError.context.status;
 
-    console.log("Error message:", errorMessage.error);
+    // If token is invalid/expired or function requires password, show dialog
+    if (status === 401) {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <PasswordDialog boxId={id} />
+        </div>
+      );
+    }
 
-    redirect(`/${id}?error=${encodeURIComponent(errorMessage.error)}`);
+    console.error("Function error:", message);
+    redirect("/");
   }
-
   console.log("Result:", result);
   const content = result.data;
   return (

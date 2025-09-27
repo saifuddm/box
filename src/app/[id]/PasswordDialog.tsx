@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -21,25 +21,40 @@ interface PasswordDialogProps {
 export default function PasswordDialog({ boxId }: PasswordDialogProps) {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  // Get error from search params
-  const error = searchParams.get("error");
 
   // Reset submitting state when component mounts or when there's an error
   useEffect(() => {
     setIsSubmitting(false);
-  }, [error]);
+  }, [errorMessage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!password.trim()) return;
 
     setIsSubmitting(true);
+    setErrorMessage(null);
 
-    // Redirect to the same page with password parameter (without error param)
-    router.push(`/${boxId}?pass=${encodeURIComponent(password)}`);
+    try {
+      // Call the api route to authenticate the box
+      const response = await fetch(`/api/box-auth`, {
+        method: "POST",
+        body: JSON.stringify({ boxId: boxId, password: password }),
+      });
+      if (response.ok) {
+        router.replace(`/${boxId}`);
+        return;
+      }
+      const data = await response.json();
+      setErrorMessage(
+        data?.error || "Authentication failed. Please try again."
+      );
+    } catch (error) {
+      setErrorMessage("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -54,9 +69,9 @@ export default function PasswordDialog({ boxId }: PasswordDialogProps) {
         </AlertDialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
+          {errorMessage && (
             <div className=" text-sm p-2 border border-maroon rounded bg-maroon/10 text-maroon">
-              {error}
+              {errorMessage}
             </div>
           )}
 
