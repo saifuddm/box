@@ -71,11 +71,7 @@ Deno.serve(async (req) => {
 
   try {
     // Check for authorization header
-    const token =
-      req.header.get("x-box-token") ||
-      (req.headers.get("authorization")?.startsWith("Bearer ")
-        ? req.headers.get("authorization")?.slice(7)
-        : null);
+    const token = req.headers.get("x-box-token");
 
     if (!token) {
       return new Response(

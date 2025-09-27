@@ -16,9 +16,13 @@ import { Button } from "@/components/ui/button";
 
 interface PasswordDialogProps {
   boxId: string;
+  passwordProtected: boolean;
 }
 
-export default function PasswordDialog({ boxId }: PasswordDialogProps) {
+export default function PasswordDialog({
+  boxId,
+  passwordProtected,
+}: PasswordDialogProps) {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -29,8 +33,15 @@ export default function PasswordDialog({ boxId }: PasswordDialogProps) {
     setIsSubmitting(false);
   }, [errorMessage]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (!passwordProtected) {
+      console.log("passwordProtected is false, submitting without password");
+      handleSubmit();
+    }
+  }, [passwordProtected]);
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!password.trim()) return;
 
     setIsSubmitting(true);

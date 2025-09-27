@@ -16,7 +16,6 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const { boxId, password } = await request.json();
   const cookieStore = await cookies();
-  console.log("request received", request);
   const supabase = await createClient();
 
   const response = await supabase.functions.invoke("box-auth", {

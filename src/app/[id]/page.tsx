@@ -59,11 +59,14 @@ export default async function BoxPage({ params }: BoxPageProps) {
   const cookieStore = await cookies();
   const token = cookieStore.get(`box_token_${id}`)?.value;
 
-  // If box is password protected and no token, show password dialog
-  if (box.password_protected && !token) {
+  // If no token, show password dialog will authenticate without password
+  if (!token) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <PasswordDialog boxId={id} />
+        <PasswordDialog
+          boxId={id}
+          passwordProtected={box.password_protected || false}
+        />
       </div>
     );
   }
@@ -72,7 +75,7 @@ export default async function BoxPage({ params }: BoxPageProps) {
   const { data: result, error: functionError } =
     await supabase.functions.invoke("get-box-content", {
       body: { boxId: id },
-      headers: token ? { "x-box-token": token } : undefined,
+      headers: { "x-box-token": token },
     });
 
   if (functionError) {
