@@ -51,6 +51,7 @@ export default function PasswordDialog({ boxId }: PasswordDialogProps) {
         data?.error || "Authentication failed. Please try again."
       );
     } catch (error) {
+      console.error("Error:", error);
       setErrorMessage("An unexpected error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);

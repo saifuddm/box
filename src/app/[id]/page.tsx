@@ -7,7 +7,6 @@ import { cookies } from "next/headers";
 
 interface BoxPageProps {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
 }
 
 export async function generateMetadata({
@@ -38,7 +37,7 @@ export async function generateMetadata({
   };
 }
 
-export default async function BoxPage({ params, searchParams }: BoxPageProps) {
+export default async function BoxPage({ params }: BoxPageProps) {
   const resolvedParams = await params;
   const { id } = resolvedParams;
 

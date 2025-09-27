@@ -90,7 +90,9 @@ Deno.serve(async (req) => {
     const secret = new TextEncoder().encode(
       Deno.env.get("BOX_TOKEN_SECRET") ?? ""
     );
-    const { payload } = await jwtVerify(token, secret, "HS256");
+    const { payload } = await jwtVerify(token, secret, {
+      algorithms: ["HS256"],
+    });
     if (payload.scope !== "box:read") {
       return new Response(
         JSON.stringify({ error: "Unauthorized, invalid scope" }),
