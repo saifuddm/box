@@ -86,7 +86,10 @@ export default async function BoxPage({ params }: BoxPageProps) {
     if (status === 401) {
       return (
         <div className="flex items-center justify-center min-h-screen">
-          <PasswordDialog boxId={id} />
+          <PasswordDialog
+            boxId={id}
+            passwordProtected={box.password_protected || false}
+          />
         </div>
       );
     }

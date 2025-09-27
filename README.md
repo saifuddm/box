@@ -11,6 +11,8 @@ Also I hated that I have to login to everything so each box can be password prot
 - 🔗 **Quick Link Sharing** - Share URLs instantly across devices
 - 📝 **Text Notes** - Store and share text content temporarily  
 - 🖼️ **Image Upload** - Upload and share images with automatic cleanup
+- 📄 **File Attachments (PDF, CSV, etc.)** - Upload and share non-image files via `FileContent`
+- 🔐 **JWT Token Auth for Boxes** - After first successful password entry, an HttpOnly JWT cookie is set so you don't need to re-enter the password every time
 - ⏰ **Auto Cleanup** - Content automatically expires after 24 hours
 - 🎨 **Modern UI** - Beautiful, responsive design with dark/light mode
 
@@ -54,7 +56,9 @@ Also I hated that I have to login to everything so each box can be password prot
    ```env
    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   BOX_TOKEN_SECRET=your_random_long_secret
    ```
+   - Also set `BOX_TOKEN_SECRET` for your Supabase Edge Functions environment (used by token verification).
 
 5. **Deploy Edge Functions**
    ```bash
@@ -75,15 +79,17 @@ The application uses three main tables and one view:
 - `Box` - Container for all content with auto-expiry
 - `TextContent` - Text notes and links
 - `ImageContent` - Uploaded images with storage references
+- `FileContent` - Uploaded files (e.g., PDF, CSV) with storage references
 - `PublicBox` (View) - View of `Box` but without the password_hash column
 
 ## 🔧 Edge Functions
 
 - **box-cleanup** - Automatically removes expired boxes and associated files every 24 hours
 - **create-box** - Creates a box and if a password is given the edge function will hash it.
-- **get-box-content** - Reading box content had to be done using edge function as the RLS policy setup for `TextContent` and `ImageContent` denied reading for public due to each box having its own password. So it checks Box for password, compares the password hash, and then send the content of both tables to User.
+- **box-auth** - Validates a box's password (if protected). Used by the Next.js API route to issue a short-lived JWT and set it as an HttpOnly cookie.
+- **get-box-content** - Returns content for a box after verifying a short‑lived JWT (or password during initial auth). Supports `TextContent`, `ImageContent`, and `FileContent`.
 - **get-storage-content** - Get the images from the main bucket, (should also have the same protections as `get-box-content` but I got lazy)
-- **upload-image** - Simple upload image and create an entry in the `ImageContent` table.
+- **upload-content** - Uploads images and files, creating entries in `ImageContent` or `FileContent` as appropriate.
 
 
 
