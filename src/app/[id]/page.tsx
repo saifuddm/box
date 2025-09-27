@@ -74,7 +74,6 @@ export default async function BoxPage({ params }: BoxPageProps) {
   // Call the edge function to get the box content, attaching the token if present
   const { data: result, error: functionError } =
     await supabase.functions.invoke("get-box-content", {
-      body: { boxId: id },
       headers: { "x-box-token": token },
     });
 

@@ -35,14 +35,14 @@ export default function PasswordDialog({
 
   useEffect(() => {
     if (!passwordProtected) {
-      console.log("passwordProtected is false, submitting without password");
+      setIsSubmitting(true);
       handleSubmit();
     }
   }, [passwordProtected]);
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!password.trim()) return;
+    if (passwordProtected && !password.trim()) return;
 
     setIsSubmitting(true);
     setErrorMessage(null);
@@ -51,7 +51,12 @@ export default function PasswordDialog({
       // Call the api route to authenticate the box
       const response = await fetch(`/api/box-auth`, {
         method: "POST",
-        body: JSON.stringify({ boxId: boxId, password: password }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          passwordProtected
+            ? { boxId: boxId, password: password }
+            : { boxId: boxId }
+        ),
       });
       if (response.ok) {
         router.replace(`/${boxId}`);
@@ -75,8 +80,9 @@ export default function PasswordDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Password Protected Box</AlertDialogTitle>
           <AlertDialogDescription>
-            This box is password protected. Please enter the password to access
-            its content.
+            {passwordProtected
+              ? "This box is password protected. Please enter the password to access its content."
+              : "Accessing box..."}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -87,20 +93,22 @@ export default function PasswordDialog({
             </div>
           )}
 
-          <div className="space-y-2">
-            <label htmlFor="password" className="text-sm font-medium">
-              Password
-            </label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter password"
-              disabled={isSubmitting}
-              autoFocus
-            />
-          </div>
+          {passwordProtected && (
+            <div className="space-y-2">
+              <label htmlFor="password" className="text-sm font-medium">
+                Password
+              </label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter password"
+                disabled={isSubmitting}
+                autoFocus
+              />
+            </div>
+          )}
 
           <AlertDialogFooter>
             <Button
@@ -113,7 +121,7 @@ export default function PasswordDialog({
             </Button>
             <AlertDialogAction
               type="submit"
-              disabled={!password.trim() || isSubmitting}
+              disabled={(passwordProtected && !password.trim()) || isSubmitting}
             >
               {isSubmitting ? "Verifying..." : "Access Box"}
             </AlertDialogAction>
