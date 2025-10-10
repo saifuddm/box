@@ -78,11 +78,13 @@ export default function PasswordDialog({
     <AlertDialog open={true}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Password Protected Box</AlertDialogTitle>
+          <AlertDialogTitle>
+            {passwordProtected ? "Password Protected Box" : "Public Box"}
+          </AlertDialogTitle>
           <AlertDialogDescription>
             {passwordProtected
               ? "This box is password protected. Please enter the password to access its content."
-              : "Accessing box..."}
+              : "This box is public. Please be mindful of the content you share."}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
