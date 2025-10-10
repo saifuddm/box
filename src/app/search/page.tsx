@@ -44,7 +44,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const { data: boxSearchResults, error: boxSearchError } = await supabase
     .from("PublicBox")
     .select("*")
-    .textSearch("name", q);
+    .ilike("name", `%${q}%`);
 
   if (boxSearchError) {
     console.error(boxSearchError);
