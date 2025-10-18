@@ -21,6 +21,7 @@ import FileContent from "@/components/content/FileContent";
 interface BoxContentProps {
   boxId: string;
   boxName: string;
+  boxCreatedAt: string;
   initialContent: Array<{
     id: string;
     content: string;
@@ -32,6 +33,7 @@ interface BoxContentProps {
 export default function BoxContent({
   boxId,
   boxName,
+  boxCreatedAt,
   initialContent,
 }: BoxContentProps) {
   const supabase = createClient();
@@ -313,6 +315,9 @@ export default function BoxContent({
       >
         {renderContent()}
       </div>
+      <p className="text-sm text-muted-foreground text-wrap">
+        Created at: {new Date(boxCreatedAt).toLocaleString()}
+      </p>
     </div>
   );
 }

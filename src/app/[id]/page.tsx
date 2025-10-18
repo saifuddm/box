@@ -46,11 +46,11 @@ export default async function BoxPage({ params }: BoxPageProps) {
   // Get the box information to check if it exists and if it's password protected
   const { data: box, error: boxError } = await supabase
     .from("PublicBox")
-    .select("id, password_protected, name")
+    .select("id, password_protected, created_at, name")
     .eq("id", id)
     .single();
 
-  if (boxError || !box || !box.name) {
+  if (boxError || !box || !box.name || !box.created_at) {
     console.error("Box not found or error:", boxError);
     redirect("/");
   }
@@ -99,6 +99,11 @@ export default async function BoxPage({ params }: BoxPageProps) {
   console.log("Result:", result);
   const content = result.data;
   return (
-    <BoxContent boxId={id} boxName={box.name} initialContent={content || []} />
+    <BoxContent
+      boxId={id}
+      boxName={box.name}
+      boxCreatedAt={box.created_at}
+      initialContent={content || []}
+    />
   );
 }

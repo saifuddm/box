@@ -1,6 +1,6 @@
 import BoxShareButton from "@/components/BoxShareButton";
 import { Button } from "@/components/ui/button";
-import { HomeIcon } from "lucide-react";
+import { HomeIcon, MailIcon } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 
@@ -16,6 +16,12 @@ function AboutLayout({ children }: { children: React.ReactNode }) {
         <h2 className="text-2xl">/about</h2>
       </div>
       <div id="actions" className="flex gap-2 sticky top-6 justify-end">
+        <Button className="cursor-pointer" size="lg" asChild>
+          <Link href="mailto:murtaza.saifuddin97@gmail.com">
+            <MailIcon />
+            <span>Contact Me</span>
+          </Link>
+        </Button>
         <BoxShareButton boxName={"about"} boxId={"about"} />
       </div>
       {children}

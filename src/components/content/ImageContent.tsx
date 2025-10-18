@@ -1,3 +1,4 @@
+"use client";
 import { ClipboardIcon, Loader2 } from "lucide-react";
 import React, { useEffect, useState, useCallback } from "react";
 import { Button } from "../ui/button";

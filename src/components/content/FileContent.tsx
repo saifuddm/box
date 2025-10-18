@@ -1,3 +1,4 @@
+"use client";
 import { createClient } from "@/utils/supabase/client";
 import { DownloadIcon, Loader2 } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";

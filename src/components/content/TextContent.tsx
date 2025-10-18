@@ -2,14 +2,22 @@
 import React from "react";
 import { Button } from "../ui/button";
 import { ClipboardIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface TextContentProps {
   id: string;
   content: string;
+  className?: string;
 }
-function TextContent({ id, content }: TextContentProps) {
+function TextContent({ id, content, className }: TextContentProps) {
   return (
-    <div id={id} className="bg-card border border-border rounded-md p-2 h-min">
+    <div
+      id={id}
+      className={cn(
+        "bg-card border border-border rounded-md p-2 h-min",
+        className
+      )}
+    >
       <div className="overflow-y-auto">
         <p className="text-card-foreground whitespace-pre-wrap">{content}</p>
       </div>
