@@ -16,6 +16,44 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Verify token
+    const token = req.headers.get("x-box-token");
+    if (!token) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized, no authorization token" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const secret = new TextEncoder().encode(
+      Deno.env.get("BOX_TOKEN_SECRET") ?? ""
+    );
+    const { payload } = await jwtVerify(token, secret, {
+      algorithms: ["HS256"],
+    });
+    if (payload.scope !== "box:read-write") {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized, invalid scope" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    const tokenBoxId = typeof payload.sub === "string" ? payload.sub : null;
+    if (!tokenBoxId) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized, invalid token box ID" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
     const { boxId, name, base64Data, mimeType, uploadType } = await req.json();
 
     //Validate input
@@ -24,6 +62,18 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "Box ID is required and must be a string" }),
         {
           status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    if (boxId !== tokenBoxId) {
+      return new Response(
+        JSON.stringify({
+          error: "Unauthorized, box ID does not match token box ID",
+        }),
+        {
+          status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
       );

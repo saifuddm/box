@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
     const { payload } = await jwtVerify(token, secret, {
       algorithms: ["HS256"],
     });
-    if (payload.scope !== "box:read") {
+    if (payload.scope !== "box:read-write") {
       return new Response(
         JSON.stringify({ error: "Unauthorized, invalid scope" }),
         {

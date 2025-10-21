@@ -10,6 +10,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -55,20 +56,16 @@ export default function SearchDialog({ error, q }: SearchDialogProps) {
               {error}
             </div>
           )}
-          <div className="space-y-2">
-            <label htmlFor="query" className="text-sm font-medium">
-              Query
-            </label>
-            <Input
-              id="query"
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search for a box"
-              disabled={isSubmitting}
-              autoFocus
-            />
-          </div>
+          <Label htmlFor="query">Query</Label>
+          <Input
+            id="query"
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search for a box"
+            disabled={isSubmitting}
+            autoFocus
+          />
 
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => router.push("/")}>

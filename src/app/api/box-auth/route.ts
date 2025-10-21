@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const { boxId, password } = await request.json();
+  const { boxId, password, rememberPassword } = await request.json();
   const cookieStore = await cookies();
   const supabase = await createClient();
 
@@ -32,11 +32,11 @@ export async function POST(request: NextRequest) {
   }
 
   const secret = new TextEncoder().encode(process.env.BOX_TOKEN_SECRET);
-  const token = await new SignJWT({ scope: "box:read" })
+  const token = await new SignJWT({ scope: "box:read-write" })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(boxId)
     .setIssuedAt()
-    .setExpirationTime("1h")
+    .setExpirationTime(rememberPassword ? "1h" : "5m")
     .sign(secret);
 
   cookieStore.set(`box_token_${boxId}`, token, {

@@ -13,6 +13,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CheckedState } from "@radix-ui/react-checkbox";
+import { Label } from "@/components/ui/label";
 
 interface PasswordDialogProps {
   boxId: string;
@@ -24,6 +27,7 @@ export default function PasswordDialog({
   passwordProtected,
 }: PasswordDialogProps) {
   const [password, setPassword] = useState("");
+  const [rememberPassword, setRememberPassword] = useState<CheckedState>(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
@@ -36,6 +40,7 @@ export default function PasswordDialog({
   useEffect(() => {
     if (!passwordProtected) {
       setIsSubmitting(true);
+      setRememberPassword(true);
       handleSubmit();
     }
   }, [passwordProtected]);
@@ -54,7 +59,11 @@ export default function PasswordDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
           passwordProtected
-            ? { boxId: boxId, password: password }
+            ? {
+                boxId: boxId,
+                password: password,
+                rememberPassword: rememberPassword,
+              }
             : { boxId: boxId }
         ),
       });
@@ -96,10 +105,8 @@ export default function PasswordDialog({
           )}
 
           {passwordProtected && (
-            <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium">
-                Password
-              </label>
+            <>
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -109,7 +116,15 @@ export default function PasswordDialog({
                 disabled={isSubmitting}
                 autoFocus
               />
-            </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="remember"
+                  checked={rememberPassword}
+                  onCheckedChange={setRememberPassword}
+                />
+                <Label htmlFor="remember">Remember password for 1 hour</Label>
+              </div>
+            </>
           )}
 
           <AlertDialogFooter>
