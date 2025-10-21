@@ -50,6 +50,8 @@ Deno.serve(async (req) => {
 
     if (boxError || !box) {
       console.error("Box not found:", boxError);
+      console.log("Box ID:", boxId);
+      console.log("Box:", box);
       return new Response(JSON.stringify({ error: "Box not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
