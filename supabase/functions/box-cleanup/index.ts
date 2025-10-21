@@ -121,6 +121,7 @@ Deno.serve(async (req) => {
     }
 
     console.log(`Found ${expiredBoxes.length} expired boxes to delete`);
+    console.log(`Expired Boxes: ${JSON.stringify(expiredBoxes)}`);
 
     const deletionResults = [];
     const errors = [];
