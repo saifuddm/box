@@ -17,6 +17,7 @@ import { HomeIcon, Loader2, PlusCircleIcon } from "lucide-react";
 import BoxShareButton from "@/components/BoxShareButton";
 import Link from "next/link";
 import FileContent from "@/components/content/FileContent";
+import { cookies } from "next/headers";
 
 interface BoxContentProps {
   boxId: string;
@@ -108,6 +109,8 @@ export default function BoxContent({
         // Handle multiple uploads in parallel
         const uploadPromises = content.files.map(async (file) => {
           try {
+            const cookieStore = await cookies();
+            const token = cookieStore.get(`box_token_${boxId}`)?.value;
             // Convert file to base64
             const base64 = await new Promise<string>((resolve) => {
               const reader = new FileReader();
@@ -127,6 +130,7 @@ export default function BoxContent({
                   mimeType: file.type,
                   uploadType: uploadType,
                 }),
+                headers: { "x-box-token": token ?? "" },
               }
             );
 
