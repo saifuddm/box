@@ -102,6 +102,10 @@ Deno.serve(async (req) => {
       );
     }
 
+    console.log(
+      `Uploading ${name} to ${boxId} with mime type ${mimeType} using token ${token}`
+    );
+
     // Convert base64 to blob
     const base64Response = await fetch(base64Data);
     const blob = await base64Response.blob();
