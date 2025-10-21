@@ -17,7 +17,7 @@ import { HomeIcon, Loader2, PlusCircleIcon } from "lucide-react";
 import BoxShareButton from "@/components/BoxShareButton";
 import Link from "next/link";
 import FileContent from "@/components/content/FileContent";
-import { cookies } from "next/headers";
+// Removed server-only import
 
 interface BoxContentProps {
   boxId: string;
@@ -109,8 +109,6 @@ export default function BoxContent({
         // Handle multiple uploads in parallel
         const uploadPromises = content.files.map(async (file) => {
           try {
-            const cookieStore = await cookies();
-            const token = cookieStore.get(`box_token_${boxId}`)?.value;
             // Convert file to base64
             const base64 = await new Promise<string>((resolve) => {
               const reader = new FileReader();
@@ -119,24 +117,22 @@ export default function BoxContent({
             });
             const uploadType = content.type === "image" ? "image" : "file";
 
-            const { error } = await supabase.functions.invoke(
-              "upload-content",
-              {
-                method: "POST",
-                body: JSON.stringify({
-                  boxId,
-                  name: file.name,
-                  base64Data: base64,
-                  mimeType: file.type,
-                  uploadType: uploadType,
-                }),
-                headers: { "x-box-token": token ?? "" },
-              }
-            );
+            // Call our server API route which forwards to the Edge Function
+            const response = await fetch("/api/upload-content", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                boxId,
+                name: file.name,
+                base64Data: base64,
+                mimeType: file.type,
+                uploadType: uploadType,
+              }),
+            });
 
-            if (error) {
-              console.error(`Error uploading image ${file.name}:`, error);
-              return { success: false, file, error: error.message };
+            if (!response.ok) {
+              const message = await response.text();
+              throw new Error(message || "Upload failed");
             }
 
             return { success: true, file, base64 };
@@ -145,7 +141,9 @@ export default function BoxContent({
               `Unexpected error uploading image ${file.name}:`,
               err
             );
-            return { success: false, file, error: "Unexpected error occurred" };
+            const message =
+              err instanceof Error ? err.message : "Unexpected error occurred";
+            return { success: false, file, error: message };
           }
         });
 
