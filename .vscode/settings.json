@@ -18,5 +18,8 @@
   ],
   "[typescript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
-  }
+  },
+  "github-actions.workflows.pinned.workflows": [
+    ".github/workflows/supabase-deploy.yml"
+  ]
 }
