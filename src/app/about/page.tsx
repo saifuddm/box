@@ -1,5 +1,3 @@
-import FileContent from "@/components/content/FileContent";
-import ImageContent from "@/components/content/ImageContent";
 import TextContent from "@/components/content/TextContent";
 import React from "react";
 
