@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { JWTPayload, jwtVerify, JWTExpired, JWTInvalid } from "npm:jose@6.1.0";
+import { JWTPayload, jwtVerify } from "npm:jose@6.1.0";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -39,9 +39,10 @@ Deno.serve(async (req) => {
         algorithms: ["HS256"],
       });
       payload = result.payload;
-    } catch (error) {
+    } catch (error: any) {
       // Handle JWT expiration and invalid token errors
-      if (error instanceof JWTExpired) {
+      // Check error code instead of instanceof since JWTExpired/JWTInvalid aren't exported
+      if (error?.code === "ERR_JWT_EXPIRED") {
         return new Response(
           JSON.stringify({ error: "Token expired, please authenticate again" }),
           {
@@ -50,7 +51,10 @@ Deno.serve(async (req) => {
           }
         );
       }
-      if (error instanceof JWTInvalid) {
+      if (
+        error?.code === "ERR_JWT_INVALID" ||
+        error?.code === "ERR_JWT_CLAIM_VALIDATION_FAILED"
+      ) {
         return new Response(
           JSON.stringify({ error: "Unauthorized, invalid token" }),
           {

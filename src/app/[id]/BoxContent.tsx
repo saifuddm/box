@@ -103,6 +103,7 @@ export default function BoxContent({
         }
 
         const result = await response.json();
+        console.log("Result:", result);
         // Add to local state with the database ID
         const newContent = {
           id: crypto.randomUUID(),
