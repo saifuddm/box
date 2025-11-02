@@ -9,24 +9,13 @@ function AboutPage() {
       id="content"
       className="grid grid-cols-1 lg:grid-cols-3 gap-2 col-span-2 lg:col-span-1"
     >
-      <TextContent id="name" content="Hello, my name is Murtaza Saifuddin" />
+      <TextContent id="name" content="Hello, we are SUNKen SHIP" />
       <TextContent
         id="about"
-        content="I'm an electrical engineer by training and a software developer by passion, driven by a vivid imagination and a love of building things. I thrive on experimenting with new technologies and turning ideas into reality, whether I'm sketching web layouts or architecting scalable backends and shipping polished features. I enjoy every step of the creative journey, from initial design spark to final deployment, and I'm always eager to learn and improve myself."
+        content="SUNKen SHIP is a creative technology collective dedicated to building tools, systems, and experiences that exist for the sake of innovation, design, and human curiosity rather than mere profit."
         className="lg:col-span-2 lg:row-span-2"
       />
-      <ImageContent
-        id="picture"
-        src="/github.webp"
-        alt="Profile Picture"
-        fromSupabase={false}
-      />
-      <FileContent
-        id="resume"
-        src="/resume.pdf"
-        alt="Resume"
-        fromSupabase={false}
-      />
+      <TextContent id="links" content="https://sunken-ships.com" type="link" />
     </div>
   );
 }

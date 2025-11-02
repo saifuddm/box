@@ -36,7 +36,7 @@ export default function Home() {
         <p className="text-muted-foreground">Made with ❤️ by</p>
 
         <Button asChild variant="outline">
-          <Link href="https://github.com/saifuddm">saifuddm</Link>
+          <Link href="https://github.com/saifuddm/box">SUNKen SHIP</Link>
         </Button>
       </footer>
     </div>

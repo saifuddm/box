@@ -17,9 +17,9 @@ function AboutLayout({ children }: { children: React.ReactNode }) {
       </div>
       <div id="actions" className="flex gap-2 sticky top-6 justify-end">
         <Button className="cursor-pointer" size="lg" asChild>
-          <Link href="mailto:murtaza.saifuddin97@gmail.com">
+          <Link href="mailto:technology@sunken-ships.com">
             <MailIcon />
-            <span>Contact Me</span>
+            <span>Contact Us</span>
           </Link>
         </Button>
         <BoxShareButton boxName={"about"} boxId={"about"} />

@@ -21,7 +21,7 @@ function WhyPage() {
     >
       <TextContent
         id="why"
-        content="Why I built Box?"
+        content="Why we built Box?"
         className="lg:col-span-3"
       />
       {WHY_CONTENT.map((content, index) => (
@@ -34,7 +34,7 @@ function WhyPage() {
 
       <TextContent
         id="uses"
-        content="What do I use Box for?"
+        content="What do we use Box for?"
         className="lg:col-span-3"
       />
       {USES_CONTENT.map((content, index) => (

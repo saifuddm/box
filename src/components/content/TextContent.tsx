@@ -8,8 +8,14 @@ interface TextContentProps {
   id: string;
   content: string;
   className?: string;
+  type?: "text" | "link";
 }
-function TextContent({ id, content, className }: TextContentProps) {
+function TextContent({
+  id,
+  content,
+  className,
+  type = "text",
+}: TextContentProps) {
   return (
     <div
       id={id}
@@ -19,7 +25,17 @@ function TextContent({ id, content, className }: TextContentProps) {
       )}
     >
       <div className="overflow-y-auto">
-        <p className="text-card-foreground whitespace-pre-wrap">{content}</p>
+        {type === "link" ? (
+          <a
+            href={content}
+            target="_blank"
+            className="text-card-foreground whitespace-pre-wrap hover:text-primary transition-colors underline underline-offset-4"
+          >
+            {content}
+          </a>
+        ) : (
+          <p className="text-card-foreground whitespace-pre-wrap">{content}</p>
+        )}
       </div>
       <div className="flex justify-between mt-2">
         <Button
