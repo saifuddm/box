@@ -12,7 +12,6 @@ import InsertContentComponent from "@/components/InsertContentComponent";
 import { Button } from "@/components/ui/button";
 import TextContent from "@/components/content/TextContent";
 import ImageContent from "@/components/content/ImageContent";
-import { createClient } from "@/utils/supabase/client";
 import { HomeIcon, Loader2, PlusCircleIcon } from "lucide-react";
 import BoxShareButton from "@/components/BoxShareButton";
 import Link from "next/link";
@@ -37,8 +36,6 @@ export default function BoxContent({
   boxCreatedAt,
   initialContent,
 }: BoxContentProps) {
-  const supabase = createClient();
-
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [content, setContent] = useState<
     {
@@ -82,18 +79,30 @@ export default function BoxContent({
 
     try {
       if (content.type === "text") {
-        // Save text content to the database
-        const { error } = await supabase.from("TextContent").insert({
-          box: boxId,
-          content: content.data!,
+        // Call our server API route which forwards to the Edge Function
+        const response = await fetch("/api/upload-content", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            boxId,
+            uploadType: "text",
+            textContent: content.data!,
+          }),
         });
 
-        if (error) {
-          console.error("Error saving text content:", error);
-          setSubmitError("Failed to save content. Please try again.");
-          return;
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorMessage = "Upload failed";
+          try {
+            const errorJson = JSON.parse(errorText);
+            errorMessage = errorJson.error || errorMessage;
+          } catch {
+            errorMessage = errorText || errorMessage;
+          }
+          throw new Error(errorMessage);
         }
 
+        const result = await response.json();
         // Add to local state with the database ID
         const newContent = {
           id: crypto.randomUUID(),
@@ -189,7 +198,11 @@ export default function BoxContent({
       setIsDrawerOpen(false);
     } catch (err) {
       console.error("Unexpected error saving content:", err);
-      setSubmitError("An unexpected error occurred. Please try again.");
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "An unexpected error occurred. Please try again.";
+      setSubmitError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

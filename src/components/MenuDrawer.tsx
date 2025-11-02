@@ -15,6 +15,7 @@ import {
   NavigationMenuList,
   navigationMenuTriggerStyle,
 } from "./ui/navigation-menu";
+import { ThemeToggle } from "./ThemeToggle";
 
 function MenuDrawer() {
   return (
@@ -56,6 +57,7 @@ function MenuNav() {
             <Link href="/search?q=tutorial">Tutorial</Link>
           </NavigationMenuLink>
         </NavigationMenuItem>
+        <ThemeToggle />
       </NavigationMenuList>
     </NavigationMenu>
   );

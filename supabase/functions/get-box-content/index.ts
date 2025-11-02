@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { JWTPayload, jwtVerify } from "npm:jose@6.1.0";
+import { JWTPayload, jwtVerify, JWTExpired, JWTInvalid } from "npm:jose@6.1.0";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -86,9 +86,37 @@ Deno.serve(async (req) => {
     const secret = new TextEncoder().encode(
       Deno.env.get("BOX_TOKEN_SECRET") ?? ""
     );
-    const { payload } = await jwtVerify(token, secret, {
-      algorithms: ["HS256"],
-    });
+
+    let payload: JWTPayload;
+    try {
+      const result = await jwtVerify(token, secret, {
+        algorithms: ["HS256"],
+      });
+      payload = result.payload;
+    } catch (error) {
+      // Handle JWT expiration and invalid token errors
+      if (error instanceof JWTExpired) {
+        return new Response(
+          JSON.stringify({ error: "Token expired, please authenticate again" }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      if (error instanceof JWTInvalid) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized, invalid token" }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      // Re-throw other errors to be caught by outer catch block
+      throw error;
+    }
+
     if (payload.scope !== "box:read-write") {
       return new Response(
         JSON.stringify({ error: "Unauthorized, invalid scope" }),

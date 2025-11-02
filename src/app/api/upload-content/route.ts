@@ -5,11 +5,40 @@ import { createClient } from "@/utils/supabase/server";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { boxId, name, base64Data, mimeType, uploadType } = body ?? {};
+    const { boxId, name, base64Data, mimeType, uploadType, textContent } =
+      body ?? {};
 
-    if (!boxId || !name || !base64Data || !mimeType || !uploadType) {
+    if (!boxId || !uploadType) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields" }),
+        JSON.stringify({
+          error: "Missing required fields: boxId and uploadType",
+        }),
+        { status: 400 }
+      );
+    }
+
+    // Validate fields based on upload type
+    if (uploadType === "text") {
+      if (!textContent) {
+        return new Response(
+          JSON.stringify({ error: "Missing required field: textContent" }),
+          { status: 400 }
+        );
+      }
+    } else if (uploadType === "image" || uploadType === "file") {
+      if (!name || !base64Data || !mimeType) {
+        return new Response(
+          JSON.stringify({
+            error: "Missing required fields: name, base64Data, and mimeType",
+          }),
+          { status: 400 }
+        );
+      }
+    } else {
+      return new Response(
+        JSON.stringify({
+          error: "Invalid uploadType. Must be 'text', 'image', or 'file'",
+        }),
         { status: 400 }
       );
     }
@@ -26,7 +55,14 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const { data, error } = await supabase.functions.invoke("upload-content", {
       method: "POST",
-      body: JSON.stringify({ boxId, name, base64Data, mimeType, uploadType }),
+      body: JSON.stringify({
+        boxId,
+        name,
+        base64Data,
+        mimeType,
+        uploadType,
+        textContent,
+      }),
       headers: { "x-box-token": token },
     });
 

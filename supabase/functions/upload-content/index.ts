@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { JWTPayload, jwtVerify } from "npm:jose@6.1.0";
+import { JWTPayload, jwtVerify, JWTExpired, JWTInvalid } from "npm:jose@6.1.0";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -32,9 +32,37 @@ Deno.serve(async (req) => {
     const secret = new TextEncoder().encode(
       Deno.env.get("BOX_TOKEN_SECRET") ?? ""
     );
-    const { payload } = await jwtVerify(token, secret, {
-      algorithms: ["HS256"],
-    });
+
+    let payload: JWTPayload;
+    try {
+      const result = await jwtVerify(token, secret, {
+        algorithms: ["HS256"],
+      });
+      payload = result.payload;
+    } catch (error) {
+      // Handle JWT expiration and invalid token errors
+      if (error instanceof JWTExpired) {
+        return new Response(
+          JSON.stringify({ error: "Token expired, please authenticate again" }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      if (error instanceof JWTInvalid) {
+        return new Response(
+          JSON.stringify({ error: "Unauthorized, invalid token" }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      // Re-throw other errors to be caught by outer catch block
+      throw error;
+    }
+
     if (payload.scope !== "box:read-write") {
       return new Response(
         JSON.stringify({ error: "Unauthorized, invalid scope" }),
@@ -55,7 +83,8 @@ Deno.serve(async (req) => {
         }
       );
     }
-    const { boxId, name, base64Data, mimeType, uploadType } = await req.json();
+    const { boxId, name, base64Data, mimeType, uploadType, textContent } =
+      await req.json();
 
     //Validate input
     if (!boxId || typeof boxId !== "string") {
@@ -80,20 +109,14 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!base64Data || !mimeType) {
-      return new Response(
-        JSON.stringify({ error: "Image data and mime type are required" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    if (!uploadType || (uploadType !== "image" && uploadType !== "file")) {
+    if (
+      !uploadType ||
+      (uploadType !== "image" && uploadType !== "file" && uploadType !== "text")
+    ) {
       return new Response(
         JSON.stringify({
-          error: "Upload type is required and must be either image or file",
+          error:
+            "Upload type is required and must be either image, file, or text",
         }),
         {
           status: 400,
@@ -102,13 +125,33 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(
-      `Uploading ${name} to ${boxId} with mime type ${mimeType} using token ${token}`
-    );
-
-    // Convert base64 to blob
-    const base64Response = await fetch(base64Data);
-    const blob = await base64Response.blob();
+    // Validate fields based on upload type
+    if (uploadType === "text") {
+      if (!textContent || typeof textContent !== "string") {
+        return new Response(
+          JSON.stringify({
+            error: "Text content is required and must be a string",
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+    } else {
+      if (!base64Data || !mimeType) {
+        return new Response(
+          JSON.stringify({
+            error:
+              "Base64 data and mime type are required for image/file uploads",
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+    }
 
     // Create Supabase client with service role key for database access
     const supabaseClient = createClient(
@@ -116,47 +159,88 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // First, upload to the storage bucket
-    const { data: uploadData, error: uploadError } =
-      await supabaseClient.storage
-        .from(uploadType === "image" ? "image-content" : "file-content")
-        .upload(`${boxId}/${name}`, blob, {
-          contentType: mimeType,
-        });
+    let content;
 
-    if (uploadError) {
-      console.error("Error uploading:", uploadError);
-      return new Response(
-        JSON.stringify({ error: "Failed to upload to storage" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+    if (uploadType === "text") {
+      // Handle text content - insert directly into database
+      console.log(`Uploading text content to ${boxId} using token ${token}`);
+
+      const { data: textData, error: textError } = await supabaseClient
+        .from("TextContent")
+        .insert({
+          box: boxId,
+          content: textContent,
+        })
+        .select("id, content, created_at")
+        .single();
+
+      if (textError) {
+        console.error("Error inserting text:", textError);
+        return new Response(
+          JSON.stringify({ error: "Failed to insert text into database" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      content = textData;
+    } else {
+      // Handle image/file content - upload to storage then insert into database
+      console.log(
+        `Uploading ${name} to ${boxId} with mime type ${mimeType} using token ${token}`
       );
-    }
 
-    // Second, insert into the database
-    const { data: content, error: contentError } = await supabaseClient
-      .from(uploadType === "image" ? "ImageContent" : "FileContent")
-      .insert({
-        box: boxId,
-        content: uploadData.path,
-      })
-      .select("id, content, created_at")
-      .single();
+      // Convert base64 to blob
+      const base64Response = await fetch(base64Data);
+      const blob = await base64Response.blob();
 
-    if (contentError) {
-      console.error("Error inserting:", contentError);
-      return new Response(
-        JSON.stringify({ error: "Failed to insert into database" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      // First, upload to the storage bucket
+      const { data: uploadData, error: uploadError } =
+        await supabaseClient.storage
+          .from(uploadType === "image" ? "image-content" : "file-content")
+          .upload(`${boxId}/${name}`, blob, {
+            contentType: mimeType,
+          });
+
+      if (uploadError) {
+        console.error("Error uploading:", uploadError);
+        return new Response(
+          JSON.stringify({ error: "Failed to upload to storage" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      // Second, insert into the database
+      const { data: contentData, error: contentError } = await supabaseClient
+        .from(uploadType === "image" ? "ImageContent" : "FileContent")
+        .insert({
+          box: boxId,
+          content: uploadData.path,
+        })
+        .select("id, content, created_at")
+        .single();
+
+      if (contentError) {
+        console.error("Error inserting:", contentError);
+        return new Response(
+          JSON.stringify({ error: "Failed to insert into database" }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+
+      content = contentData;
     }
 
     return new Response(JSON.stringify({ data: content }), {
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
