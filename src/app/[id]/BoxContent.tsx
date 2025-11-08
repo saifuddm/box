@@ -119,25 +119,18 @@ export default function BoxContent({
         // Handle multiple uploads in parallel
         const uploadPromises = content.files.map(async (file) => {
           try {
-            // Convert file to base64
-            const base64 = await new Promise<string>((resolve) => {
-              const reader = new FileReader();
-              reader.onload = () => resolve(reader.result as string);
-              reader.readAsDataURL(file);
-            });
             const uploadType = content.type === "image" ? "image" : "file";
 
-            // Call our server API route which forwards to the Edge Function
+            // Create FormData for file upload (no base64 conversion!)
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("boxId", boxId);
+            formData.append("uploadType", uploadType);
+
+            // Call our server API route
             const response = await fetch("/api/upload-content", {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                boxId,
-                name: file.name,
-                base64Data: base64,
-                mimeType: file.type,
-                uploadType: uploadType,
-              }),
+              body: formData, // Browser automatically sets Content-Type with boundary
             });
 
             if (!response.ok) {
@@ -145,10 +138,13 @@ export default function BoxContent({
               throw new Error(message || "Upload failed");
             }
 
-            return { success: true, file, base64 };
+            // Create a temporary URL for local preview
+            const fileUrl = URL.createObjectURL(file);
+
+            return { success: true, file, fileUrl };
           } catch (err) {
             console.error(
-              `Unexpected error uploading image ${file.name}:`,
+              `Unexpected error uploading ${content.type} ${file.name}:`,
               err
             );
             const message =
@@ -168,7 +164,7 @@ export default function BoxContent({
         if (successfulUploads.length > 0) {
           const newContentItems = successfulUploads.map((result) => ({
             id: crypto.randomUUID(),
-            content: result.base64!,
+            content: result.fileUrl!,
             type: content.type,
             file: result.file,
           }));

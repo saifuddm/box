@@ -6,9 +6,28 @@ import { Database } from "@/utils/supabase/database.types";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { boxId, name, base64Data, mimeType, uploadType, textContent } =
-      body ?? {};
+    // Determine if request is FormData or JSON based on Content-Type
+    const contentType = request.headers.get("content-type") || "";
+    const isFormData = contentType.includes("multipart/form-data");
+
+    let boxId: string;
+    let uploadType: string;
+    let textContent: string | undefined;
+    let file: File | undefined;
+
+    if (isFormData) {
+      // Handle FormData (for file/image uploads)
+      const formData = await request.formData();
+      boxId = formData.get("boxId") as string;
+      uploadType = formData.get("uploadType") as string;
+      file = (formData.get("file") as File | null) || undefined;
+    } else {
+      // Handle JSON (for text uploads)
+      const body = await request.json();
+      boxId = body.boxId;
+      uploadType = body.uploadType;
+      textContent = body.textContent;
+    }
 
     if (!boxId || !uploadType) {
       return new Response(
@@ -28,10 +47,10 @@ export async function POST(request: NextRequest) {
         );
       }
     } else if (uploadType === "image" || uploadType === "file") {
-      if (!name || !base64Data || !mimeType) {
+      if (!file) {
         return new Response(
           JSON.stringify({
-            error: "Missing required fields: name, base64Data, and mimeType",
+            error: "Missing required field: file",
           }),
           { status: 400 }
         );
@@ -63,8 +82,9 @@ export async function POST(request: NextRequest) {
         algorithms: ["HS256"],
       });
       payload = result.payload;
-    } catch (error: any) {
-      if (error?.code === "ERR_JWT_EXPIRED") {
+    } catch (error: unknown) {
+      const err = error as { code?: string };
+      if (err?.code === "ERR_JWT_EXPIRED") {
         return new Response(
           JSON.stringify({ error: "Token expired, please authenticate again" }),
           { status: 401 }
@@ -132,18 +152,18 @@ export async function POST(request: NextRequest) {
       content = textData;
     } else {
       // Handle image/file content - upload to storage then insert into database
-      console.log(`Uploading ${name} to ${boxId} with mime type ${mimeType}`);
+      console.log(
+        `Uploading ${file!.name} to ${boxId} with mime type ${file!.type}`
+      );
 
-      // Convert base64 to Buffer
-      const base64Response = await fetch(base64Data);
-      const blob = await base64Response.blob();
-      const buffer = Buffer.from(await blob.arrayBuffer());
+      // Convert file to Buffer directly (no base64 step!)
+      const buffer = Buffer.from(await file!.arrayBuffer());
 
       // First, upload to the storage bucket
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from(uploadType === "image" ? "image-content" : "file-content")
-        .upload(`${boxId}/${name}`, buffer, {
-          contentType: mimeType,
+        .upload(`${boxId}/${file!.name}`, buffer, {
+          contentType: file!.type,
         });
 
       if (uploadError) {
