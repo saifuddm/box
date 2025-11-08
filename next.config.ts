@@ -21,6 +21,9 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     typedRoutes: false,
+    serverActions: {
+      bodySizeLimit: "100mb",
+    },
   },
   // Exclude supabase folder from Next.js compilation
   pageExtensions: ["js", "jsx", "ts", "tsx", "mdx"],
