@@ -16,54 +16,34 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Get the authorization token from the header
-    const authHeader = req.headers.get("authorization");
-
-    if (!authHeader) {
-      console.error("No authorization header provided");
-      return new Response(
-        JSON.stringify({ error: "Unauthorized: No authorization header" }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Extract the token (format: "Bearer <token>")
-    const token = authHeader.replace("Bearer ", "");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    if (!serviceRoleKey) {
-      console.error("Service role key not found in environment");
-      return new Response(
-        JSON.stringify({ error: "Server configuration error" }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    // Check if the provided token matches the service role key
-    if (token !== serviceRoleKey) {
-      console.error("Invalid service role token provided");
-      return new Response(
-        JSON.stringify({ error: "Unauthorized: Invalid service role token" }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
-    }
-
-    console.log("Service role authentication successful");
-
     // Create Supabase client with service role key for full access
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      serviceRoleKey
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
+
+    // Check if a Tutorial box already exists
+    const { data: existingBox, error: checkError } = await supabaseClient
+      .from("Box")
+      .select("id, name, created_at, password_protected")
+      .eq("name", "Tutorial")
+      .single();
+
+    if (existingBox) {
+      console.log(`Tutorial box already exists with ID: ${existingBox.id}`);
+      return new Response(
+        JSON.stringify({
+          message: "Tutorial box already exists",
+          box: existingBox,
+          url: `${Deno.env.get("SITE_URL") || "http://localhost:3000"}/${
+            existingBox.id
+          }`,
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
 
     // Create the Tutorial Box with no password
     const { data: newBox, error: boxError } = await supabaseClient
