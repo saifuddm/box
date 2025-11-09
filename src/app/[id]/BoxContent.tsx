@@ -274,7 +274,7 @@ export default function BoxContent({
         <h2 className="text-2xl">/{boxName}</h2>
       </div>
       {/* <p className="text-sm text-muted-foreground text-wrap">ID: {boxId}</p> */}
-      <div id="actions" className="flex gap-2 sticky top-6 justify-end">
+      <div id="actions" className="flex gap-2 sticky top-6 justify-end z-10">
         <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
           <DrawerTrigger asChild>
             <Button
