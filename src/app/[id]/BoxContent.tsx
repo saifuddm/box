@@ -78,16 +78,16 @@ export default function BoxContent({
     setSubmitError(null);
 
     try {
+      // Handle text content
       if (content.type === "text") {
-        // Call our server API route which forwards to the Edge Function
+        const formData = new FormData();
+        formData.append("boxId", boxId);
+        formData.append("uploadType", "text");
+        formData.append("textContent", content.data!);
+
         const response = await fetch("/api/upload-content", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            boxId,
-            uploadType: "text",
-            textContent: content.data!,
-          }),
+          body: formData,
         });
 
         if (!response.ok) {
@@ -104,7 +104,8 @@ export default function BoxContent({
 
         const result = await response.json();
         console.log("Result:", result);
-        // Add to local state with the database ID
+
+        // Add to local state
         const newContent = {
           id: crypto.randomUUID(),
           content: content.data!,
@@ -116,21 +117,17 @@ export default function BoxContent({
         (content.type === "image" || content.type === "file") &&
         content.files
       ) {
-        // Handle multiple uploads in parallel
+        // Handle multiple file/image uploads in parallel
         const uploadPromises = content.files.map(async (file) => {
           try {
-            const uploadType = content.type === "image" ? "image" : "file";
-
-            // Create FormData for file upload (no base64 conversion!)
             const formData = new FormData();
             formData.append("file", file);
             formData.append("boxId", boxId);
-            formData.append("uploadType", uploadType);
+            formData.append("uploadType", content.type);
 
-            // Call our server API route
             const response = await fetch("/api/upload-content", {
               method: "POST",
-              body: formData, // Browser automatically sets Content-Type with boundary
+              body: formData,
             });
 
             if (!response.ok) {

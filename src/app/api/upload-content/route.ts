@@ -6,28 +6,12 @@ import { Database } from "@/utils/supabase/database.types";
 
 export async function POST(request: NextRequest) {
   try {
-    // Determine if request is FormData or JSON based on Content-Type
-    const contentType = request.headers.get("content-type") || "";
-    const isFormData = contentType.includes("multipart/form-data");
-
-    let boxId: string;
-    let uploadType: string;
-    let textContent: string | undefined;
-    let file: File | undefined;
-
-    if (isFormData) {
-      // Handle FormData (for file/image uploads)
-      const formData = await request.formData();
-      boxId = formData.get("boxId") as string;
-      uploadType = formData.get("uploadType") as string;
-      file = (formData.get("file") as File | null) || undefined;
-    } else {
-      // Handle JSON (for text uploads)
-      const body = await request.json();
-      boxId = body.boxId;
-      uploadType = body.uploadType;
-      textContent = body.textContent;
-    }
+    // Always expect FormData for all uploads
+    const formData = await request.formData();
+    const boxId = formData.get("boxId") as string;
+    const uploadType = formData.get("uploadType") as string;
+    const textContent = formData.get("textContent") as string | null;
+    const file = formData.get("file") as File | null;
 
     if (!boxId || !uploadType) {
       return new Response(
@@ -136,7 +120,7 @@ export async function POST(request: NextRequest) {
         .from("TextContent")
         .insert({
           box: boxId,
-          content: textContent,
+          content: textContent!, // Non-null assertion safe due to validation above
         })
         .select("id, content, created_at")
         .single();
