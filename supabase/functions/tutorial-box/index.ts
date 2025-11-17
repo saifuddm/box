@@ -16,6 +16,23 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Verify the request is coming from an authorized source (cron job or dashboard)
+    // by checking if the service role key is used in the Authorization header
+    const authHeader = req.headers.get("Authorization");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!authHeader || !authHeader.includes(serviceRoleKey ?? "")) {
+      console.warn("Unauthorized access attempt to tutorial-box function");
+      return new Response(
+        JSON.stringify({
+          error: "Unauthorized - This function can only be called internally",
+        }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
     // Create Supabase client with service role key for full access
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -25,19 +42,15 @@ Deno.serve(async (req) => {
     // Check if a Tutorial box already exists
     const { data: existingBox, error: checkError } = await supabaseClient
       .from("Box")
-      .select("id, name, created_at, password_protected")
-      .eq("name", "Tutorial")
-      .single();
+      .select("id, name")
+      .eq("name", "Tutorial");
 
     if (existingBox) {
-      console.log(`Tutorial box already exists with ID: ${existingBox.id}`);
+      console.log("Existing Box:", JSON.stringify(existingBox));
       return new Response(
         JSON.stringify({
           message: "Tutorial box already exists",
           box: existingBox,
-          url: `${Deno.env.get("SITE_URL") || "http://localhost:3000"}/${
-            existingBox.id
-          }`,
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -74,46 +87,46 @@ Deno.serve(async (req) => {
       {
         content: `🎉 Welcome to Box!
 
-This is your Tutorial box - a demonstration of how Box works.
+    This is your Tutorial box - a demonstration of how Box works.
 
-Box is a simple, temporary sharing platform where you can:
-• Share text notes and ideas
-• Upload and share images
-• Collaborate without accounts
-• Set passwords for privacy`,
+    Box is a simple, temporary sharing platform where you can:
+    • Share text notes and ideas
+    • Upload and share images
+    • Collaborate without accounts
+    • Set passwords for privacy`,
         box: newBox.id,
       },
       {
         content: `📝 How to Add Content
 
-To add content to any box:
-1. Click the "+" button
-2. Type your text or paste from clipboard
-3. Or upload an image by clicking "Choose Image"
-4. Submit to add it to the box
+    To add content to any box:
+    1. Click the "+" button
+    2. Type your text or paste from clipboard
+    3. Or upload an image by clicking "Choose Image"
+    4. Submit to add it to the box
 
-All content is displayed in a beautiful masonry layout!`,
+    All content is displayed in a beautiful masonry layout!`,
         box: newBox.id,
       },
       {
         content: `🔒 Privacy & Security
 
-Boxes can be:
-• Public (like this one) - anyone with the link can view
-• Password protected - requires a password to access
+    Boxes can be:
+    • Public (like this one) - anyone with the link can view
+    • Password protected - requires a password to access
 
-⏰ Auto-Cleanup
-All boxes automatically expire after 24 hours to keep the platform clean and private.`,
+    ⏰ Auto-Cleanup
+    All boxes automatically expire after 24 hours to keep the platform clean and private.`,
         box: newBox.id,
       },
       {
         content: `🚀 Getting Started
 
-1. Create your own box at the homepage
-2. Share the link with others
-3. Start collaborating!
+    1. Create your own box at the homepage
+    2. Share the link with others
+    3. Start collaborating!
 
-Remember: This tutorial box will be recreated daily, so feel free to experiment and add your own content here!`,
+    Remember: This tutorial box will be recreated daily, so feel free to experiment and add your own content here!`,
         box: newBox.id,
       },
     ];

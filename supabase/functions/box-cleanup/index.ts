@@ -76,6 +76,24 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Verify the request is coming from an authorized source (cron job or dashboard)
+    // by checking if the service role key is used in the Authorization header
+    const authHeader = req.headers.get("Authorization");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!authHeader || !authHeader.includes(serviceRoleKey ?? "")) {
+      console.warn("Unauthorized access attempt to box-cleanup function");
+      return new Response(
+        JSON.stringify({
+          error: "Unauthorized - This function can only be called internally",
+        }),
+        {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     // Create Supabase client with service role key for full access
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",

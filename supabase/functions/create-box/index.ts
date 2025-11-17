@@ -37,6 +37,20 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Restrict box creation for "Tutorial"
+    if (name === "Tutorial") {
+      return new Response(
+        JSON.stringify({
+          error:
+            "You cannot create a box with the name 'Tutorial'. Please choose a different name.",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     // Create Supabase client
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
