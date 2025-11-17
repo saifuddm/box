@@ -353,7 +353,7 @@ allowed_mime_types = ["*/*"]
 
 [functions.box-cleanup]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 import_map = "./functions/box-cleanup/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
@@ -364,7 +364,7 @@ entrypoint = "./functions/box-cleanup/index.ts"
 
 [functions.tutorial-box]
 enabled = true
-verify_jwt = true
+verify_jwt = false
 import_map = "./functions/tutorial-box/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
