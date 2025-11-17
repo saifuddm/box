@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
       .select("id, name")
       .eq("name", "Tutorial");
 
-    if (existingBox) {
+    if (existingBox.length > 0) {
       console.log("Existing Box:", JSON.stringify(existingBox));
       return new Response(
         JSON.stringify({
