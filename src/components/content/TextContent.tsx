@@ -2,6 +2,7 @@
 import React from "react";
 import { Button } from "../ui/button";
 import { ClipboardIcon } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface TextContentProps {
@@ -43,7 +44,14 @@ function TextContent({
           size="icon"
           className="cursor-pointer hover:text-primary transition-colors"
           onClick={() => {
-            navigator.clipboard.writeText(content);
+            navigator.clipboard
+              .writeText(content)
+              .then(() => {
+                toast("Copied to clipboard");
+              })
+              .catch(() => {
+                toast.error("Failed to copy");
+              });
           }}
         >
           <ClipboardIcon />
