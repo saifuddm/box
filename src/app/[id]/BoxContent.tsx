@@ -226,6 +226,7 @@ export default function BoxContent({
         contentElement = (
           <ImageContent
             key={item.id}
+            boxId={boxId}
             id={item.id}
             src={item.file ? URL.createObjectURL(item.file) : item.content}
             alt={item.file ? item.file.name : item.content}
@@ -236,6 +237,7 @@ export default function BoxContent({
         contentElement = (
           <FileContent
             key={item.id}
+            boxId={boxId}
             id={item.id}
             src={item.file ? URL.createObjectURL(item.file) : item.content}
             alt={
