@@ -12,7 +12,7 @@ interface TextContentProps {
   id: string;
   content: string;
   className?: string;
-  type?: "text" | "link";
+  // type?: "text" | "link";
 }
 function fallbackCopyToClipboard(text: string): void {
   const textArea = document.createElement("textarea");
@@ -37,43 +37,41 @@ function TextContent({
   id,
   content,
   className,
-  type = "text",
+  //type = "text",
 }: TextContentProps) {
   return (
     <div
       id={id}
       className={cn(
         "bg-card border border-border rounded-md p-2 h-min",
-        className
+        className,
       )}
     >
       <div className="overflow-y-auto">
-        {type === "link" ? (
+        {/* {type === "link" ? (
           <a
             href={content}
             target="_blank"
-            className="text-card-foreground whitespace-pre-wrap hover:text-primary transition-colors underline underline-offset-4"
+            className="text-card-foreground hover:text-primary transition-colors underline underline-offset-4"
           >
             {content}
           </a>
-        ) : (
-          <div
-            className={cn(
-              "prose prose-sm max-w-none text-card-foreground dark:prose-invert whitespace-pre-wrap",
-              "prose-headings:my-2 prose-p:my-2 prose-ul:my-2 prose-ol:my-2",
-              "prose-table:block prose-table:w-full prose-table:overflow-x-auto",
-              "prose-a:text-primary prose-a:underline prose-a:underline-offset-4"
-            )}
+        ) : ( */}
+        <div
+          className={cn(
+            "prose prose-sm text-card-foreground dark:prose-invert",
+            "prose-table:block prose-table:w-full prose-table:overflow-x-auto",
+            "prose-a:text-primary prose-a:underline prose-a:underline-offset-4",
+          )}
+        >
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeSanitize]}
+            skipHtml
           >
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeSanitize]}
-              skipHtml
-            >
-              {content}
-            </ReactMarkdown>
-          </div>
-        )}
+            {content}
+          </ReactMarkdown>
+        </div>
       </div>
       <div className="flex justify-between mt-2">
         <Button

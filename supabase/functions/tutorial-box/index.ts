@@ -30,13 +30,13 @@ Deno.serve(async (req) => {
         {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        },
       );
     }
     // Create Supabase client with service role key for full access
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
     // Check if a Tutorial box already exists
@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        },
       );
     }
 
@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        },
       );
     }
 
@@ -85,48 +85,48 @@ Deno.serve(async (req) => {
     // Create tutorial text contents explaining how to use a box
     const tutorialContents = [
       {
-        content: `🎉 Welcome to Box!
-
-    This is your Tutorial box - a demonstration of how Box works.
-
-    Box is a simple, temporary sharing platform where you can:
-    • Share text notes and ideas
-    • Upload and share images
-    • Collaborate without accounts
-    • Set passwords for privacy`,
+        content: `
+# 🎉 Welcome to Box!
+This is a **Tutorial box** - a demonstration of how Box works. Box is a simple, temporary sharing platform where you can:
+- Share text notes and ideas
+- Upload and share images.
+- Upload and share files.
+- Collaborate without accounts.
+- Set passwords for privacy.
+- Auto-cleanup after 24 hours.`,
         box: newBox.id,
       },
       {
-        content: `📝 How to Add Content
+        content: `
+# 📝 How to Add Content
+To add content to any box:
+1. Click the "+" button
+2. Type your text or paste from clipboard
+3. Or upload an image by clicking "Choose Image"
+4. Submit to add it to the box
 
-    To add content to any box:
-    1. Click the "+" button
-    2. Type your text or paste from clipboard
-    3. Or upload an image by clicking "Choose Image"
-    4. Submit to add it to the box
-
-    All content is displayed in a beautiful masonry layout!`,
+All content is displayed in a beautiful masonry layout!`,
         box: newBox.id,
       },
       {
-        content: `🔒 Privacy & Security
+        content: `
+# 🔒 Privacy & Security
+Boxes can be:
+- Public (like this one) - anyone with the link can view
+- Password protected - requires a password to access
 
-    Boxes can be:
-    • Public (like this one) - anyone with the link can view
-    • Password protected - requires a password to access
-
-    ⏰ Auto-Cleanup
-    All boxes automatically expire after 24 hours to keep the platform clean and private.`,
+# ⏰ Auto-Cleanup
+All boxes automatically expire after 24 hours to keep the platform clean (Encryption of content is coming soon).`,
         box: newBox.id,
       },
       {
-        content: `🚀 Getting Started
+        content: `
+# 🚀 Getting Started
+1. Create your own box at the homepage
+2. Share the link with others
+3. Start collaborating!
 
-    1. Create your own box at the homepage
-    2. Share the link with others
-    3. Start collaborating!
-
-    Remember: This tutorial box will be recreated daily, so feel free to experiment and add your own content here!`,
+**Remember:** This tutorial box will be recreated daily, so feel free to experiment and add your own content here!`,
         box: newBox.id,
       },
     ];
@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
       console.warn("Continuing despite text content creation error");
     } else {
       console.log(
-        `Created ${textContents?.length || 0} tutorial text contents`
+        `Created ${textContents?.length || 0} tutorial text contents`,
       );
     }
 

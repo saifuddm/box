@@ -1,6 +1,3 @@
--- Temporary SQL for a new Supabase migration
--- Goal: prevent direct anon/authenticated inserts into content tables.
-
 -- 1) Remove direct INSERT privileges for public API roles.
 revoke insert on table public."TextContent" from anon, authenticated;
 revoke insert on table public."ImageContent" from anon, authenticated;
