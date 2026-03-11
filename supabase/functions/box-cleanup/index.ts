@@ -29,10 +29,10 @@ async function deleteImageContent(supabaseClient: any, boxId: string) {
   if (deleteFilesError) {
     console.warn(
       `Warning: Could not delete files for box ${boxId}:`,
-      deleteFilesError
+      deleteFilesError,
     );
     throw new Error(
-      `Could not delete files for box ${boxId}: ${deleteFilesError.message}`
+      `Could not delete files for box ${boxId}: ${deleteFilesError.message}`,
     );
   } else {
     console.log(`Deleted ${filePaths.length} files for box ${boxId}`);
@@ -59,10 +59,10 @@ async function deleteFileContent(supabaseClient: any, boxId: string) {
   if (deleteFilesError) {
     console.warn(
       `Warning: Could not delete files for box ${boxId}:`,
-      deleteFilesError
+      deleteFilesError,
     );
     throw new Error(
-      `Could not delete files for box ${boxId}: ${deleteFilesError.message}`
+      `Could not delete files for box ${boxId}: ${deleteFilesError.message}`,
     );
   } else {
     console.log(`Deleted ${filePaths.length} files for box ${boxId}`);
@@ -90,14 +90,14 @@ Deno.serve(async (req) => {
         {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        },
       );
     }
 
     // Create Supabase client with service role key for full access
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
     // Calculate the cutoff time (24 hours ago)
@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
     twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 23);
 
     console.log(
-      `Looking for boxes created before: ${twentyFourHoursAgo.toISOString()}`
+      `Looking for boxes created before: ${twentyFourHoursAgo.toISOString()}`,
     );
 
     // Find boxes older than 24 hours
@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
         {
           status: 500,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        },
       );
     }
 
@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
+        },
       );
     }
 
@@ -182,6 +182,10 @@ Deno.serve(async (req) => {
         });
       }
     }
+
+    // Fire-and-forget tutorial-box invocation after cleanup.
+    // We do not block cleanup response on tutorial-box completion.
+    supabaseClient.functions.invoke("tutorial-box", { body: {} });
 
     const response = {
       message: `Cleanup completed. ${deletionResults.length} boxes deleted.`,

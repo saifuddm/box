@@ -33,8 +33,13 @@ export default function CreateForm() {
         });
 
       if (createBoxError) {
-        console.error("Edge function error:", createBoxError);
-        setError("Failed to create box. Please try again.");
+        const errorMessage = await createBoxError.context.json();
+        console.error("Edge function error:", errorMessage);
+        if (errorMessage.error) {
+          setError(errorMessage.error);
+        } else {
+          setError("Failed to create box. Please try again.");
+        }
         return;
       }
 
