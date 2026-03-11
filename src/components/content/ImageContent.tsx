@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Button } from "../ui/button";
 import { createClient } from "@/utils/supabase/client";
 import Image from "next/image";
+import { toast } from "sonner";
 import {
   copyImageToClipboard,
   getMobileClipboardInfo,
@@ -56,23 +57,30 @@ function ImageContent({ id, src, alt, fromSupabase }: ImageContentProps) {
       console.warn("HTTPS required for clipboard operations on mobile");
     }
 
-    await copyImageToClipboard(sourceUrl, {
-      onSuccess: () => {
-        console.log("Image copied successfully");
-      },
-      onError: (error) => {
-        console.error("Copy failed:", error.message);
-        // Show more specific error for mobile users
-        if (clipboardInfo.isMobile && clipboardInfo.requiresHttps) {
-          console.warn("Mobile clipboard requires HTTPS connection");
-        }
-      },
-      onFallback: () => {
-        console.log("Fallback: Image URL copied instead");
-      },
-    });
-
-    setIsCopying(false);
+    try {
+      await copyImageToClipboard(sourceUrl, {
+        onSuccess: () => {
+          toast("Image copied to clipboard");
+        },
+        onError: (error) => {
+          console.error("Copy failed:", error.message);
+        },
+        onFallback: () => {
+          toast("Image URL copied to clipboard", {
+            description: "Paste the link to share the image",
+          });
+        },
+      });
+    } catch {
+      toast.error("Failed to copy", {
+        description:
+          clipboardInfo.isMobile && clipboardInfo.requiresHttps
+            ? "Clipboard requires HTTPS on mobile"
+            : "Please try again",
+      });
+    } finally {
+      setIsCopying(false);
+    }
   }
 
   useEffect(() => {
