@@ -1,18 +1,23 @@
 "use client";
-import { createClient } from "@/utils/supabase/client";
 import { DownloadIcon, Loader2 } from "lucide-react";
 import React, { useCallback, useEffect, useState } from "react";
 import { Button } from "../ui/button";
 
-const supabase = createClient();
 interface FileContentProps {
+  boxId: string;
   id: string;
   src: string;
   alt: string;
   fromSupabase?: boolean;
 }
 
-function FileContent({ id, src, alt, fromSupabase }: FileContentProps) {
+function FileContent({
+  boxId,
+  id,
+  src,
+  alt,
+  fromSupabase,
+}: FileContentProps) {
   const [sourceUrl, setSourceUrl] = useState<string>(src);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,24 +26,26 @@ function FileContent({ id, src, alt, fromSupabase }: FileContentProps) {
   const getSignedUrl = useCallback(async () => {
     console.log(`Getting signed URL for: ${src}`);
     try {
-      const { data: signedUrl, error: signedUrlError } =
-        await supabase.functions.invoke("get-storage-content", {
-          method: "POST",
-          body: JSON.stringify({ path: src, uploadType: "file" }),
-        });
+      const response = await fetch("/api/storage-content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ boxId, path: src, uploadType: "file" }),
+      });
+      const payload = await response.json();
 
-      if (signedUrlError) {
-        throw new Error(signedUrlError.message);
+      if (!response.ok) {
+        throw new Error(payload?.error || "Failed to fetch signed URL");
       }
-      console.log("Signed URL:", signedUrl);
-      setSourceUrl(signedUrl.signedUrl);
+
+      console.log("Signed URL:", payload);
+      setSourceUrl(payload.signedUrl);
     } catch (error) {
       console.error("Error getting signed URL:", error);
       setError(`Error getting file. Please try again.`);
     } finally {
       setIsLoading(false);
     }
-  }, [src]);
+  }, [boxId, src]);
 
   async function handleDownloadFile() {
     setIsDownloading(true);

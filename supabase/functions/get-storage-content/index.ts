@@ -1,10 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { JWTPayload, jwtVerify } from "npm:jose@6.1.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-box-token",
 };
 
 console.log("Hello from Functions!");
@@ -16,7 +17,82 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { path, uploadType } = await req.json();
+    const token = req.headers.get("x-box-token");
+    if (!token) {
+      return new Response(JSON.stringify({ error: "Unauthorized, missing token" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const secret = new TextEncoder().encode(
+      Deno.env.get("BOX_TOKEN_SECRET") ?? ""
+    );
+
+    let payload: JWTPayload;
+    try {
+      const result = await jwtVerify(token, secret, {
+        algorithms: ["HS256"],
+      });
+      payload = result.payload;
+    } catch (error: unknown) {
+      const err = error as { code?: string };
+      if (err?.code === "ERR_JWT_EXPIRED") {
+        return new Response(
+          JSON.stringify({ error: "Token expired, please authenticate again" }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      return new Response(JSON.stringify({ error: "Unauthorized, invalid token" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (payload.scope !== "box:read-write") {
+      return new Response(JSON.stringify({ error: "Unauthorized, invalid scope" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const boxId = typeof payload.sub === "string" ? payload.sub : null;
+    if (!boxId) {
+      return new Response(JSON.stringify({ error: "Unauthorized, invalid box ID" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const body = await req.json();
+    const path = typeof body?.path === "string" ? body.path : null;
+    const uploadType =
+      body?.uploadType === "image" || body?.uploadType === "file"
+        ? body.uploadType
+        : null;
+
+    if (!path || !uploadType) {
+      return new Response(
+        JSON.stringify({ error: "path and uploadType are required" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    if (!path.startsWith(`${boxId}/`)) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized, path does not match token box" }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
 
     // Create Supabase client with service role key for database access
     const supabaseClient = createClient(

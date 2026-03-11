@@ -2,7 +2,6 @@
 import { ClipboardIcon, Loader2 } from "lucide-react";
 import React, { useEffect, useState, useCallback } from "react";
 import { Button } from "../ui/button";
-import { createClient } from "@/utils/supabase/client";
 import Image from "next/image";
 import { toast } from "sonner";
 import {
@@ -11,15 +10,20 @@ import {
 } from "@/utils/imageClipboard";
 
 interface ImageContentProps {
+  boxId: string;
   id: string;
   src: string;
   alt: string;
   fromSupabase?: boolean;
 }
 
-const supabase = createClient();
-
-function ImageContent({ id, src, alt, fromSupabase }: ImageContentProps) {
+function ImageContent({
+  boxId,
+  id,
+  src,
+  alt,
+  fromSupabase,
+}: ImageContentProps) {
   const [sourceUrl, setSourceUrl] = useState<string>(src);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,24 +32,26 @@ function ImageContent({ id, src, alt, fromSupabase }: ImageContentProps) {
   const getSignedUrl = useCallback(async () => {
     console.log(`Getting signed URL for: ${src}`);
     try {
-      const { data: signedUrl, error: signedUrlError } =
-        await supabase.functions.invoke("get-storage-content", {
-          method: "POST",
-          body: JSON.stringify({ path: src, uploadType: "image" }),
-        });
+      const response = await fetch("/api/storage-content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ boxId, path: src, uploadType: "image" }),
+      });
+      const payload = await response.json();
 
-      if (signedUrlError) {
-        throw new Error(signedUrlError.message);
+      if (!response.ok) {
+        throw new Error(payload?.error || "Failed to fetch signed URL");
       }
-      console.log("Signed URL:", signedUrl);
-      setSourceUrl(signedUrl.signedUrl);
+
+      console.log("Signed URL:", payload);
+      setSourceUrl(payload.signedUrl);
     } catch (error) {
       console.error("Error getting signed URL:", error);
       setError(`Error getting picture. Please try again.`);
     } finally {
       setIsLoading(false);
     }
-  }, [src]);
+  }, [boxId, src]);
 
   async function handleCopyImage() {
     setIsCopying(true);
