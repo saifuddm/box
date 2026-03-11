@@ -4,6 +4,9 @@ import { Button } from "../ui/button";
 import { ClipboardIcon } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeSanitize from "rehype-sanitize";
 
 interface TextContentProps {
   id: string;
@@ -54,7 +57,22 @@ function TextContent({
             {content}
           </a>
         ) : (
-          <p className="text-card-foreground whitespace-pre-wrap">{content}</p>
+          <div
+            className={cn(
+              "prose prose-sm max-w-none text-card-foreground dark:prose-invert whitespace-pre-wrap",
+              "prose-headings:my-2 prose-p:my-2 prose-ul:my-2 prose-ol:my-2",
+              "prose-table:block prose-table:w-full prose-table:overflow-x-auto",
+              "prose-a:text-primary prose-a:underline prose-a:underline-offset-4"
+            )}
+          >
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeSanitize]}
+              skipHtml
+            >
+              {content}
+            </ReactMarkdown>
+          </div>
         )}
       </div>
       <div className="flex justify-between mt-2">

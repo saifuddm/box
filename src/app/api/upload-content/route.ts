@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
 import { createClient } from "@supabase/supabase-js";
 import { Database } from "@/utils/supabase/database.types";
+import { containsHtmlElements } from "@/lib/markdown";
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,9 +25,18 @@ export async function POST(request: NextRequest) {
 
     // Validate fields based on upload type
     if (uploadType === "text") {
-      if (!textContent) {
+      const trimmedTextContent = textContent?.trim();
+      if (!trimmedTextContent) {
         return new Response(
           JSON.stringify({ error: "Missing required field: textContent" }),
+          { status: 400 }
+        );
+      }
+      if (containsHtmlElements(trimmedTextContent)) {
+        return new Response(
+          JSON.stringify({
+            error: "HTML elements are not allowed in markdown content.",
+          }),
           { status: 400 }
         );
       }
@@ -120,7 +130,8 @@ export async function POST(request: NextRequest) {
         .from("TextContent")
         .insert({
           box: boxId,
-          content: textContent!, // Non-null assertion safe due to validation above
+          // TODO: add a content_format field (plain|markdown) for future migration support.
+          content: textContent!.trim(), // Non-null assertion safe due to validation above
         })
         .select("id, content, created_at")
         .single();
