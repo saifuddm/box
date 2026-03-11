@@ -16,6 +16,7 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
+import { containsHtmlElements } from "@/lib/markdown";
 
 interface FileType {
   file: File;
@@ -37,6 +38,9 @@ export default function InsertContentComponent({
   onClose,
 }: InsertContentComponentProps) {
   const [textContent, setTextContent] = useState("");
+  const [textValidationError, setTextValidationError] = useState<string | null>(
+    null
+  );
   const [imageFiles, setImageFiles] = useState<FileType[]>([]);
   const [fileFiles, setFileFiles] = useState<FileType[]>([]);
   const [showEmptyContentDialog, setShowEmptyContentDialog] = useState(false);
@@ -47,6 +51,7 @@ export default function InsertContentComponent({
     try {
       const text = await navigator.clipboard.readText();
       setTextContent(text);
+      setTextValidationError(null);
     } catch (err) {
       console.error("Failed to read clipboard contents: ", err);
       // Fallback: show a message to user
@@ -158,9 +163,17 @@ export default function InsertContentComponent({
         files: imageFiles.map((img) => img.file),
       });
     } else if (textContent.trim()) {
+      const trimmedTextContent = textContent.trim();
+      if (containsHtmlElements(trimmedTextContent)) {
+        setTextValidationError(
+          "HTML elements are not allowed. Use Markdown syntax instead."
+        );
+        return;
+      }
+      setTextValidationError(null);
       onSubmit?.({
         type: "text",
-        data: textContent.trim(),
+        data: trimmedTextContent,
       });
     } else if (fileFiles.length > 0) {
       onSubmit?.({
@@ -188,6 +201,7 @@ export default function InsertContentComponent({
 
   const handleClear = () => {
     setTextContent("");
+    setTextValidationError(null);
     // Clean up preview URLs
     imageFiles.forEach((img) => URL.revokeObjectURL(img.preview));
     setImageFiles([]);
@@ -222,16 +236,24 @@ export default function InsertContentComponent({
           htmlFor="content-text"
           className="text-sm font-medium text-foreground"
         >
-          Text Content
+          Text Content (Markdown supported)
         </label>
         <Textarea
           id="content-text"
-          placeholder="Enter your text content here..."
+          placeholder="Write markdown here (for example: ## Heading, **bold**, - list)"
           value={textContent}
-          onChange={(e) => setTextContent(e.target.value)}
+          onChange={(e) => {
+            setTextContent(e.target.value);
+            if (textValidationError) {
+              setTextValidationError(null);
+            }
+          }}
           className="min-h-[100px] resize-none"
           disabled={imageFiles.length > 0}
         />
+        {textValidationError && (
+          <p className="text-sm text-maroon">{textValidationError}</p>
+        )}
 
         <Button
           onClick={handlePasteText}
