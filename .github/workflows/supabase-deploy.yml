@@ -28,4 +28,4 @@ jobs:
 
       - run: supabase db push --linked --password $SUPABASE_DB_PASSWORD --yes
 
-      - run: supabase functions deploy --linked
+      - run: supabase functions deploy --project-ref $PROJECT_REF
