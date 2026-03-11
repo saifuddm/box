@@ -3,6 +3,7 @@ import { SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { NextRequest } from "next/server";
 
+// TODO: Remove this route
 export async function GET(request: NextRequest) {
   try {
     console.log("Request received", request);
@@ -36,13 +37,13 @@ export async function POST(request: NextRequest) {
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(boxId)
     .setIssuedAt()
-    .setExpirationTime(rememberPassword ? "1h" : "5m")
+    .setExpirationTime(rememberPassword ? "24h" : "1h")
     .sign(secret);
 
   cookieStore.set(`box_token_${boxId}`, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 60,
+    maxAge: rememberPassword ? 60 * 60 * 24 : 60 * 60,
     path: "/",
   });
 

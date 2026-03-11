@@ -58,6 +58,7 @@ export default async function BoxPage({ params }: BoxPageProps) {
   // Read token cookie (if present)
   const cookieStore = await cookies();
   const token = cookieStore.get(`box_token_${id}`)?.value;
+  
 
   // If no token, show password dialog will authenticate without password
   if (!token) {
@@ -71,7 +72,7 @@ export default async function BoxPage({ params }: BoxPageProps) {
     );
   }
 
-  // Call the edge function to get the box content, attaching the token if present
+  // Call the edge function to get the box content, attaching the token
   const { data: result, error: functionError } =
     await supabase.functions.invoke("get-box-content", {
       headers: { "x-box-token": token },
