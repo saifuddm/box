@@ -58,7 +58,6 @@ export default async function BoxPage({ params }: BoxPageProps) {
   // Read token cookie (if present)
   const cookieStore = await cookies();
   const token = cookieStore.get(`box_token_${id}`)?.value;
-  
 
   // If no token, show password dialog will authenticate without password
   if (!token) {
@@ -79,8 +78,9 @@ export default async function BoxPage({ params }: BoxPageProps) {
     });
 
   if (functionError) {
-    const message = await functionError.context.text();
+    const message = await functionError.context.json();
     const status = functionError.context.status;
+    console.error("Function error:", message, status);
 
     // If token is invalid/expired or function requires password, show dialog
     if (status === 401) {
@@ -94,7 +94,6 @@ export default async function BoxPage({ params }: BoxPageProps) {
       );
     }
 
-    console.error("Function error:", message);
     redirect("/");
   }
   console.log("Result:", result);
