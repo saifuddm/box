@@ -4,9 +4,9 @@ import React from "react";
 const WHY_PAGE_MARKDOWN = `
 # Why we built Box?
 
-I see the people that build products and services and showcase them to the world and I always wanted to do that, I have built a lot for other people and my job but I dont think I am getting any better. So this project serves two things, one is to build something cool that I would use myself and the other is to get feedback from the community on my code my design and my ideas.
+I see the people that build products and services and showcase them to the world and I always wanted to do that, I have built a lot for other people and my job but I dont think I am getting any better. So this project serves two things, one is to build something useful and the other is to build in public.
 
-This is my the github link to the project: [box](https://github.com/saifuddm/box). I believe I have setup branch protection and hopefully not leaking any secrets, but if you do find some secret or some exploit on the site please please let me know. When I release new box features I will give you a preview as a thanks.
+This is my the github link to the project: [box](https://github.com/saifuddm/box). The repository is public and I would love to get feedback on the code, design, and ideas.
 
 # What do we use Box for?
 
