@@ -78,12 +78,133 @@ export default function BoxContent({
     setSubmitError(null);
 
     try {
-      // Handle text content
-      if (content.type === "text") {
+      const selectedFiles = content.files ?? [];
+      const failedUploads: Array<{ file: File; error: string }> = [];
+      const successfulUploads: Array<{
+        file: File;
+        fileUrl: string;
+        uploadType: "image" | "file";
+        storagePath: string;
+      }> = [];
+
+      // Upload selected files first and keep image/file cards behavior.
+      if (selectedFiles.length > 0) {
+        const uploadPromises = selectedFiles.map(async (file) => {
+          const uploadType: "image" | "file" = file.type.startsWith("image/")
+            ? "image"
+            : "file";
+
+          try {
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("boxId", boxId);
+            formData.append("uploadType", uploadType);
+
+            const response = await fetch("/api/upload-content", {
+              method: "POST",
+              body: formData,
+            });
+
+            const rawBody = await response.text();
+            let payload: { data?: { content?: string }; error?: string } = {};
+            try {
+              payload = rawBody ? JSON.parse(rawBody) : {};
+            } catch {
+              payload = { error: rawBody || "Upload failed" };
+            }
+
+            if (!response.ok) {
+              throw new Error(payload.error || "Upload failed");
+            }
+
+            const storagePath = payload.data?.content;
+            if (!storagePath) {
+              throw new Error("Upload succeeded but no storage path returned");
+            }
+
+            const fileUrl = URL.createObjectURL(file);
+            return {
+              success: true as const,
+              file,
+              fileUrl,
+              uploadType,
+              storagePath,
+            };
+          } catch (err) {
+            console.error(`Unexpected error uploading ${file.name}:`, err);
+            const message =
+              err instanceof Error ? err.message : "Unexpected error occurred";
+            return { success: false as const, file, error: message };
+          }
+        });
+
+        const uploadResults = await Promise.all(uploadPromises);
+        uploadResults.forEach((result) => {
+          if (result.success) {
+            successfulUploads.push(result);
+          } else {
+            failedUploads.push({ file: result.file, error: result.error });
+          }
+        });
+
+        if (successfulUploads.length > 0) {
+          const newContentItems = successfulUploads.map((result) => ({
+            id: crypto.randomUUID(),
+            content: result.fileUrl,
+            type: result.uploadType,
+            file: result.file,
+          }));
+          setContent((prev) => [...prev, ...newContentItems]);
+        }
+      }
+
+      // When files were selected, at least one upload must succeed before saving text.
+      if (selectedFiles.length > 0 && successfulUploads.length === 0) {
+        const errorMessages = failedUploads
+          .map((result) => `${result.file.name}: ${result.error}`)
+          .join(", ");
+        setSubmitError(`Failed to upload: ${errorMessages}`);
+        return;
+      }
+
+      const trimmedText = content.data?.trim() ?? "";
+      const attachmentApiLinks = successfulUploads.map((result) => {
+        const query = new URLSearchParams({
+          boxId,
+          path: result.storagePath,
+          uploadType: result.uploadType,
+        });
+        return {
+          ...result,
+          link: `/api/storage-content?${query.toString()}`,
+        };
+      });
+
+      const imageAttachmentLines = attachmentApiLinks
+        .filter((result) => result.uploadType === "image")
+        .map((result) => `![${result.file.name}](${result.link})`);
+
+      const fileAttachmentLines = attachmentApiLinks
+        .filter((result) => result.uploadType === "file")
+        .map((result) => `[${result.file.name}](${result.link})`);
+
+      const attachmentLines = [...imageAttachmentLines, ...fileAttachmentLines];
+      const attachmentMarkdown =
+        attachmentLines.length > 0
+          ? `## Attachments\n\n${attachmentLines.join("\n")}`
+          : "";
+
+      const finalTextContent = trimmedText
+        ? attachmentMarkdown
+          ? `${trimmedText}\n\n${attachmentMarkdown}`
+          : trimmedText
+        : attachmentMarkdown;
+
+      if (finalTextContent) {
         const formData = new FormData();
         formData.append("boxId", boxId);
         formData.append("uploadType", "text");
-        formData.append("textContent", content.data!);
+        formData.append("textContent", finalTextContent);
 
         const response = await fetch("/api/upload-content", {
           method: "POST",
@@ -108,87 +229,25 @@ export default function BoxContent({
         // Add to local state
         const newContent = {
           id: crypto.randomUUID(),
-          content: content.data!,
-          type: content.type,
+          content: finalTextContent,
+          type: "text" as const,
         };
 
         setContent((prev) => [...prev, newContent]);
-      } else if (
-        (content.type === "image" || content.type === "file") &&
-        content.files
-      ) {
-        // Handle multiple file/image uploads in parallel
-        const uploadPromises = content.files.map(async (file) => {
-          try {
-            const formData = new FormData();
-            formData.append("file", file);
-            formData.append("boxId", boxId);
-            formData.append("uploadType", content.type);
-
-            const response = await fetch("/api/upload-content", {
-              method: "POST",
-              body: formData,
-            });
-
-            if (!response.ok) {
-              const message = await response.text();
-              throw new Error(message || "Upload failed");
-            }
-
-            // Create a temporary URL for local preview
-            const fileUrl = URL.createObjectURL(file);
-
-            return { success: true, file, fileUrl };
-          } catch (err) {
-            console.error(
-              `Unexpected error uploading ${content.type} ${file.name}:`,
-              err
-            );
-            const message =
-              err instanceof Error ? err.message : "Unexpected error occurred";
-            return { success: false, file, error: message };
-          }
-        });
-
-        // Wait for all uploads to complete
-        const results = await Promise.all(uploadPromises);
-
-        // Separate successful and failed uploads
-        const successfulUploads = results.filter((result) => result.success);
-        const failedUploads = results.filter((result) => !result.success);
-
-        // Add successful uploads to local state
-        if (successfulUploads.length > 0) {
-          const newContentItems = successfulUploads.map((result) => ({
-            id: crypto.randomUUID(),
-            content: result.fileUrl!,
-            type: content.type,
-            file: result.file,
-          }));
-
-          setContent((prev) => [...prev, ...newContentItems]);
-        }
-
-        // Handle errors
-        if (failedUploads.length > 0) {
-          const errorMessages = failedUploads
-            .map((result) => `${result.file.name}: ${result.error}`)
-            .join(", ");
-
-          if (successfulUploads.length === 0) {
-            // All uploads failed
-            setSubmitError(`Failed to upload: ${errorMessages}`);
-            return;
-          } else {
-            // Some uploads failed, show partial success message
-            setSubmitError(
-              `Some files failed to upload: ${errorMessages}. ${successfulUploads.length} file(s) uploaded successfully.`
-            );
-          }
-        }
       }
 
-      // Close the drawer on successful save
+      // Handle partial upload failures while keeping successful uploads and text save.
+      if (failedUploads.length > 0) {
+        const errorMessages = failedUploads
+          .map((result) => `${result.file.name}: ${result.error}`)
+          .join(", ");
+        setSubmitError(
+          `Some files failed to upload: ${errorMessages}. ${successfulUploads.length} file(s) uploaded successfully.`
+        );
+        return;
+      }
+
+      // Close the drawer on successful save.
       setIsDrawerOpen(false);
     } catch (err) {
       console.error("Unexpected error saving content:", err);

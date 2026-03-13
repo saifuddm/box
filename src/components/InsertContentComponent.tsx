@@ -77,7 +77,6 @@ export default function InsertContentComponent({
             };
 
             setImageFiles((prev) => [...prev, newImageFile]);
-            setTextContent("");
             return;
           }
         }
@@ -119,10 +118,13 @@ export default function InsertContentComponent({
 
       if (newImageFiles.length > 0) {
         setImageFiles((prev) => [...prev, ...newImageFiles]);
-        setTextContent("");
-      } else if (newFileFiles.length > 0) {
+      }
+
+      if (newFileFiles.length > 0) {
         setFileFiles((prev) => [...prev, ...newFileFiles]);
-      } else {
+      }
+
+      if (newImageFiles.length === 0 && newFileFiles.length === 0) {
         alert("Please select valid image files");
       }
     }
@@ -156,14 +158,13 @@ export default function InsertContentComponent({
   };
 
   const handleSubmit = () => {
-    if (imageFiles.length > 0) {
-      onSubmit?.({
-        type: "image",
-        data: null,
-        files: imageFiles.map((img) => img.file),
-      });
-    } else if (textContent.trim()) {
-      const trimmedTextContent = textContent.trim();
+    const trimmedTextContent = textContent.trim();
+    const allFiles = [
+      ...imageFiles.map((img) => img.file),
+      ...fileFiles.map((file) => file.file),
+    ];
+
+    if (trimmedTextContent) {
       if (containsHtmlElements(trimmedTextContent)) {
         setTextValidationError(
           "HTML elements are not allowed. Use Markdown syntax instead."
@@ -174,12 +175,14 @@ export default function InsertContentComponent({
       onSubmit?.({
         type: "text",
         data: trimmedTextContent,
+        files: allFiles.length > 0 ? allFiles : undefined,
       });
-    } else if (fileFiles.length > 0) {
+    } else if (imageFiles.length > 0 || fileFiles.length > 0) {
       onSubmit?.({
-        type: "file",
+        // Type is kept for backward compatibility; upload type is derived per-file.
+        type: "image",
         data: null,
-        files: fileFiles.map((file) => file.file),
+        files: allFiles,
       });
     } else {
       // Show alert dialog when no content
@@ -249,7 +252,6 @@ export default function InsertContentComponent({
             }
           }}
           className="min-h-[100px] resize-none"
-          disabled={imageFiles.length > 0}
         />
         {textValidationError && (
           <p className="text-sm text-maroon">{textValidationError}</p>
@@ -257,7 +259,6 @@ export default function InsertContentComponent({
 
         <Button
           onClick={handlePasteText}
-          disabled={imageFiles.length > 0}
           variant="secondary"
           className="cursor-pointer w-full"
         >
@@ -322,7 +323,6 @@ export default function InsertContentComponent({
           <div className="grid grid-cols-2 gap-2">
             <Button
               onClick={handlePasteImage}
-              disabled={!!textContent.trim()}
               variant="secondary"
               className="h-auto py-3 flex-col cursor-pointer flex items-center justify-center"
             >
@@ -331,7 +331,6 @@ export default function InsertContentComponent({
             </Button>
             <Button
               onClick={handleImageUploadClick}
-              disabled={!!textContent.trim()}
               variant="secondary"
               className="h-auto py-3 flex-col cursor-pointer flex items-center justify-center"
             >
@@ -390,7 +389,6 @@ export default function InsertContentComponent({
           <div className="grid grid-cols-2 gap-2">
             <Button
               onClick={handleFileUploadClick}
-              disabled={!!textContent.trim() || imageFiles.length > 0}
               variant="secondary"
               className="h-auto py-3 flex-col cursor-pointer flex items-center justify-center"
             >
