@@ -24,22 +24,24 @@ interface FileType {
   id: string;
 }
 
+interface ContentType {
+  type: "text" | "image" | "file";
+  data: string | null;
+  files?: File[];
+}
+
 interface InsertContentComponentProps {
-  onSubmit?: (content: {
-    type: "text" | "image" | "empty" | "file";
-    data: string | null;
-    files?: File[];
-  }) => void;
+  onSubmit?: (content: ContentType[]) => void;
   onClose?: () => void;
 }
 
-export default function InsertContentComponent({
+function InsertContentComponent({
   onSubmit,
   onClose,
 }: InsertContentComponentProps) {
   const [textContent, setTextContent] = useState("");
   const [textValidationError, setTextValidationError] = useState<string | null>(
-    null
+    null,
   );
   const [imageFiles, setImageFiles] = useState<FileType[]>([]);
   const [fileFiles, setFileFiles] = useState<FileType[]>([]);
@@ -77,7 +79,6 @@ export default function InsertContentComponent({
             };
 
             setImageFiles((prev) => [...prev, newImageFile]);
-            setTextContent("");
             return;
           }
         }
@@ -87,7 +88,7 @@ export default function InsertContentComponent({
     } catch (err) {
       console.error("Failed to read clipboard contents: ", err);
       alert(
-        "Unable to access clipboard for images. Please use the upload button instead."
+        "Unable to access clipboard for images. Please use the upload button instead.",
       );
     }
   };
@@ -119,10 +120,13 @@ export default function InsertContentComponent({
 
       if (newImageFiles.length > 0) {
         setImageFiles((prev) => [...prev, ...newImageFiles]);
-        setTextContent("");
-      } else if (newFileFiles.length > 0) {
+      }
+
+      if (newFileFiles.length > 0) {
         setFileFiles((prev) => [...prev, ...newFileFiles]);
-      } else {
+      }
+
+      if (newImageFiles.length === 0 && newFileFiles.length === 0) {
         alert("Please select valid image files");
       }
     }
@@ -156,43 +160,49 @@ export default function InsertContentComponent({
   };
 
   const handleSubmit = () => {
+    const content: ContentType[] = [];
+
     if (imageFiles.length > 0) {
-      onSubmit?.({
+      content.push({
         type: "image",
         data: null,
-        files: imageFiles.map((img) => img.file),
+        files: imageFiles.map((imageFile) => imageFile.file),
       });
-    } else if (textContent.trim()) {
-      const trimmedTextContent = textContent.trim();
+    }
+
+    if (fileFiles.length > 0) {
+      content.push({
+        type: "file",
+        data: null,
+        files: fileFiles.map((fileFile) => fileFile.file),
+      });
+    }
+
+    const trimmedTextContent = textContent.trim();
+    if (trimmedTextContent) {
       if (containsHtmlElements(trimmedTextContent)) {
         setTextValidationError(
-          "HTML elements are not allowed. Use Markdown syntax instead."
+          "HTML elements are not allowed. Use Markdown syntax instead.",
         );
         return;
       }
       setTextValidationError(null);
-      onSubmit?.({
+      content.push({
         type: "text",
         data: trimmedTextContent,
       });
-    } else if (fileFiles.length > 0) {
-      onSubmit?.({
-        type: "file",
-        data: null,
-        files: fileFiles.map((file) => file.file),
-      });
-    } else {
-      // Show alert dialog when no content
-      setShowEmptyContentDialog(true);
     }
+
+    if (content.length === 0) {
+      setShowEmptyContentDialog(true);
+      return;
+    }
+    onSubmit?.(content);
   };
 
   const handleEmptyContentCancel = () => {
     setShowEmptyContentDialog(false);
-    onSubmit?.({
-      type: "empty",
-      data: null,
-    });
+    onSubmit?.([]);
   };
 
   const handleEmptyContentContinue = () => {
@@ -249,7 +259,6 @@ export default function InsertContentComponent({
             }
           }}
           className="min-h-[100px] resize-none"
-          disabled={imageFiles.length > 0}
         />
         {textValidationError && (
           <p className="text-sm text-maroon">{textValidationError}</p>
@@ -257,7 +266,6 @@ export default function InsertContentComponent({
 
         <Button
           onClick={handlePasteText}
-          disabled={imageFiles.length > 0}
           variant="secondary"
           className="cursor-pointer w-full"
         >
@@ -322,7 +330,6 @@ export default function InsertContentComponent({
           <div className="grid grid-cols-2 gap-2">
             <Button
               onClick={handlePasteImage}
-              disabled={!!textContent.trim()}
               variant="secondary"
               className="h-auto py-3 flex-col cursor-pointer flex items-center justify-center"
             >
@@ -331,7 +338,6 @@ export default function InsertContentComponent({
             </Button>
             <Button
               onClick={handleImageUploadClick}
-              disabled={!!textContent.trim()}
               variant="secondary"
               className="h-auto py-3 flex-col cursor-pointer flex items-center justify-center"
             >
@@ -390,7 +396,6 @@ export default function InsertContentComponent({
           <div className="grid grid-cols-2 gap-2">
             <Button
               onClick={handleFileUploadClick}
-              disabled={!!textContent.trim() || imageFiles.length > 0}
               variant="secondary"
               className="h-auto py-3 flex-col cursor-pointer flex items-center justify-center"
             >
@@ -451,3 +456,6 @@ export default function InsertContentComponent({
     </div>
   );
 }
+
+export { InsertContentComponent };
+export type { ContentType };

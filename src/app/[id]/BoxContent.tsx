@@ -8,7 +8,10 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
-import InsertContentComponent from "@/components/InsertContentComponent";
+import {
+  InsertContentComponent,
+  type ContentType,
+} from "@/components/InsertContentComponent";
 import { Button } from "@/components/ui/button";
 import TextContent from "@/components/content/TextContent";
 import ImageContent from "@/components/content/ImageContent";
@@ -16,6 +19,13 @@ import { HomeIcon, Loader2, PlusCircleIcon } from "lucide-react";
 import BoxShareButton from "@/components/BoxShareButton";
 import Link from "next/link";
 import FileContent from "@/components/content/FileContent";
+import {
+  buildAttachmentMarkdown,
+  combineContent,
+  uploadBinaryContent,
+  uploadTextContent,
+  type UploadedBinaryContent,
+} from "@/utils/BoxContentHelper";
 // Removed server-only import
 
 interface BoxContentProps {
@@ -61,15 +71,10 @@ export default function BoxContent({
     setContent(formattedContent);
   }, [initialContent]);
 
-  const handleContentSubmit = async (content: {
-    type: "text" | "image" | "empty" | "file";
-    data: string | null;
-    files?: File[];
-  }) => {
+  const handleContentSubmit = async (content: ContentType[]) => {
     console.log("Content submitted:", content);
 
-    if (content.type === "empty" || (!content.data && !content.files?.length)) {
-      // Close the drawer when empty content is submitted
+    if (content.length === 0) {
       setIsDrawerOpen(false);
       return;
     }
@@ -78,117 +83,89 @@ export default function BoxContent({
     setSubmitError(null);
 
     try {
-      // Handle text content
-      if (content.type === "text") {
-        const formData = new FormData();
-        formData.append("boxId", boxId);
-        formData.append("uploadType", "text");
-        formData.append("textContent", content.data!);
+      const textContentItem = content.find((item) => item.type === "text");
+      const imageFiles =
+        content.find((item) => item.type === "image")?.files ?? [];
+      const fileFiles =
+        content.find((item) => item.type === "file")?.files ?? [];
+      const selectedFiles = [...imageFiles, ...fileFiles];
+      const hasText = Boolean(textContentItem?.data?.trim());
 
-        const response = await fetch("/api/upload-content", {
-          method: "POST",
-          body: formData,
-        });
+      const uploadedBinaryContent: UploadedBinaryContent[] = [];
+      const failedUploads: Array<{ file: File; error: string }> = [];
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          let errorMessage = "Upload failed";
-          try {
-            const errorJson = JSON.parse(errorText);
-            errorMessage = errorJson.error || errorMessage;
-          } catch {
-            errorMessage = errorText || errorMessage;
-          }
-          throw new Error(errorMessage);
-        }
-
-        const result = await response.json();
-        console.log("Result:", result);
-
-        // Add to local state
-        const newContent = {
-          id: crypto.randomUUID(),
-          content: content.data!,
-          type: content.type,
-        };
-
-        setContent((prev) => [...prev, newContent]);
-      } else if (
-        (content.type === "image" || content.type === "file") &&
-        content.files
-      ) {
-        // Handle multiple file/image uploads in parallel
-        const uploadPromises = content.files.map(async (file) => {
-          try {
-            const formData = new FormData();
-            formData.append("file", file);
-            formData.append("boxId", boxId);
-            formData.append("uploadType", content.type);
-
-            const response = await fetch("/api/upload-content", {
-              method: "POST",
-              body: formData,
-            });
-
-            if (!response.ok) {
-              const message = await response.text();
-              throw new Error(message || "Upload failed");
+      if (selectedFiles.length > 0) {
+        const uploadResults = await Promise.all(
+          selectedFiles.map(async (file) => {
+            try {
+              const uploaded = await uploadBinaryContent({
+                boxId,
+                file,
+                hideContent: hasText,
+              });
+              return { success: true as const, uploaded };
+            } catch (error) {
+              const message =
+                error instanceof Error
+                  ? error.message
+                  : "Unexpected error occurred";
+              return { success: false as const, file, error: message };
             }
+          }),
+        );
 
-            // Create a temporary URL for local preview
-            const fileUrl = URL.createObjectURL(file);
-
-            return { success: true, file, fileUrl };
-          } catch (err) {
-            console.error(
-              `Unexpected error uploading ${content.type} ${file.name}:`,
-              err
-            );
-            const message =
-              err instanceof Error ? err.message : "Unexpected error occurred";
-            return { success: false, file, error: message };
+        uploadResults.forEach((result) => {
+          if (result.success) {
+            uploadedBinaryContent.push(result.uploaded);
+          } else {
+            failedUploads.push({ file: result.file, error: result.error });
           }
         });
 
-        // Wait for all uploads to complete
-        const results = await Promise.all(uploadPromises);
-
-        // Separate successful and failed uploads
-        const successfulUploads = results.filter((result) => result.success);
-        const failedUploads = results.filter((result) => !result.success);
-
-        // Add successful uploads to local state
-        if (successfulUploads.length > 0) {
-          const newContentItems = successfulUploads.map((result) => ({
-            id: crypto.randomUUID(),
-            content: result.fileUrl!,
-            type: content.type,
-            file: result.file,
-          }));
-
-          setContent((prev) => [...prev, ...newContentItems]);
-        }
-
-        // Handle errors
         if (failedUploads.length > 0) {
           const errorMessages = failedUploads
             .map((result) => `${result.file.name}: ${result.error}`)
             .join(", ");
+          setSubmitError(`Failed to upload: ${errorMessages}`);
+          return;
+        }
 
-          if (successfulUploads.length === 0) {
-            // All uploads failed
-            setSubmitError(`Failed to upload: ${errorMessages}`);
-            return;
-          } else {
-            // Some uploads failed, show partial success message
-            setSubmitError(
-              `Some files failed to upload: ${errorMessages}. ${successfulUploads.length} file(s) uploaded successfully.`
-            );
-          }
+        if (!hasText && uploadedBinaryContent.length > 0) {
+          // Files-only flow: keep image/file cards visible in local state.
+          const newContentItems = uploadedBinaryContent.map((item) => ({
+            id: crypto.randomUUID(),
+            content: item.fileUrl,
+            type: item.uploadType,
+            file: item.file,
+          }));
+          setContent((prev) => [...prev, ...newContentItems]);
         }
       }
 
-      // Close the drawer on successful save
+      if (hasText) {
+        const attachmentMarkdown = buildAttachmentMarkdown(
+          uploadedBinaryContent,
+          boxId,
+        );
+        const finalTextContent = combineContent(
+          textContentItem?.data ?? "",
+          attachmentMarkdown,
+        );
+
+        await uploadTextContent({
+          boxId,
+          textContent: finalTextContent,
+          hideContent: false,
+        });
+
+        const newTextContent = {
+          id: crypto.randomUUID(),
+          content: finalTextContent,
+          type: "text" as const,
+        };
+        setContent((prev) => [...prev, newTextContent]);
+      }
+
       setIsDrawerOpen(false);
     } catch (err) {
       console.error("Unexpected error saving content:", err);
