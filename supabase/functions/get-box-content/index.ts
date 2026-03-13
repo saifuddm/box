@@ -13,6 +13,7 @@ async function fetchTextContent(supabaseClient: any, boxId: string) {
     .from("TextContent")
     .select("id, content, created_at")
     .eq("box", boxId)
+    .eq("hide_content", false)
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -31,6 +32,7 @@ async function fetchImageContent(supabaseClient: any, boxId: string) {
     .from("ImageContent")
     .select("id, content, created_at")
     .eq("box", boxId)
+    .eq("hide_content", false)
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -49,6 +51,7 @@ async function fetchFileContent(supabaseClient: any, boxId: string) {
     .from("FileContent")
     .select("id, content, created_at")
     .eq("box", boxId)
+    .eq("hide_content", false)
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -148,8 +151,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Fetch both text, image and file content in parallel
-
+    // Fetch text, image and file content in parallel.
     const [textContent, imageContent, fileContent] = await Promise.all([
       fetchTextContent(supabaseClient, boxId),
       fetchImageContent(supabaseClient, boxId),

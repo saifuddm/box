@@ -24,22 +24,24 @@ interface FileType {
   id: string;
 }
 
+interface ContentType {
+  type: "text" | "image" | "file";
+  data: string | null;
+  files?: File[];
+}
+
 interface InsertContentComponentProps {
-  onSubmit?: (content: {
-    type: "text" | "image" | "empty" | "file";
-    data: string | null;
-    files?: File[];
-  }) => void;
+  onSubmit?: (content: ContentType[]) => void;
   onClose?: () => void;
 }
 
-export default function InsertContentComponent({
+function InsertContentComponent({
   onSubmit,
   onClose,
 }: InsertContentComponentProps) {
   const [textContent, setTextContent] = useState("");
   const [textValidationError, setTextValidationError] = useState<string | null>(
-    null
+    null,
   );
   const [imageFiles, setImageFiles] = useState<FileType[]>([]);
   const [fileFiles, setFileFiles] = useState<FileType[]>([]);
@@ -86,7 +88,7 @@ export default function InsertContentComponent({
     } catch (err) {
       console.error("Failed to read clipboard contents: ", err);
       alert(
-        "Unable to access clipboard for images. Please use the upload button instead."
+        "Unable to access clipboard for images. Please use the upload button instead.",
       );
     }
   };
@@ -158,44 +160,49 @@ export default function InsertContentComponent({
   };
 
   const handleSubmit = () => {
-    const trimmedTextContent = textContent.trim();
-    const allFiles = [
-      ...imageFiles.map((img) => img.file),
-      ...fileFiles.map((file) => file.file),
-    ];
+    const content: ContentType[] = [];
 
+    if (imageFiles.length > 0) {
+      content.push({
+        type: "image",
+        data: null,
+        files: imageFiles.map((imageFile) => imageFile.file),
+      });
+    }
+
+    if (fileFiles.length > 0) {
+      content.push({
+        type: "file",
+        data: null,
+        files: fileFiles.map((fileFile) => fileFile.file),
+      });
+    }
+
+    const trimmedTextContent = textContent.trim();
     if (trimmedTextContent) {
       if (containsHtmlElements(trimmedTextContent)) {
         setTextValidationError(
-          "HTML elements are not allowed. Use Markdown syntax instead."
+          "HTML elements are not allowed. Use Markdown syntax instead.",
         );
         return;
       }
       setTextValidationError(null);
-      onSubmit?.({
+      content.push({
         type: "text",
         data: trimmedTextContent,
-        files: allFiles.length > 0 ? allFiles : undefined,
       });
-    } else if (imageFiles.length > 0 || fileFiles.length > 0) {
-      onSubmit?.({
-        // Type is kept for backward compatibility; upload type is derived per-file.
-        type: "image",
-        data: null,
-        files: allFiles,
-      });
-    } else {
-      // Show alert dialog when no content
-      setShowEmptyContentDialog(true);
     }
+
+    if (content.length === 0) {
+      setShowEmptyContentDialog(true);
+      return;
+    }
+    onSubmit?.(content);
   };
 
   const handleEmptyContentCancel = () => {
     setShowEmptyContentDialog(false);
-    onSubmit?.({
-      type: "empty",
-      data: null,
-    });
+    onSubmit?.([]);
   };
 
   const handleEmptyContentContinue = () => {
@@ -449,3 +456,6 @@ export default function InsertContentComponent({
     </div>
   );
 }
+
+export { InsertContentComponent };
+export type { ContentType };

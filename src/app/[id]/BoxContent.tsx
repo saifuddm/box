@@ -8,7 +8,10 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
-import InsertContentComponent from "@/components/InsertContentComponent";
+import {
+  InsertContentComponent,
+  type ContentType,
+} from "@/components/InsertContentComponent";
 import { Button } from "@/components/ui/button";
 import TextContent from "@/components/content/TextContent";
 import ImageContent from "@/components/content/ImageContent";
@@ -16,6 +19,13 @@ import { HomeIcon, Loader2, PlusCircleIcon } from "lucide-react";
 import BoxShareButton from "@/components/BoxShareButton";
 import Link from "next/link";
 import FileContent from "@/components/content/FileContent";
+import {
+  buildAttachmentMarkdown,
+  combineContent,
+  uploadBinaryContent,
+  uploadTextContent,
+  type UploadedBinaryContent,
+} from "@/utils/BoxContentHelper";
 // Removed server-only import
 
 interface BoxContentProps {
@@ -61,15 +71,10 @@ export default function BoxContent({
     setContent(formattedContent);
   }, [initialContent]);
 
-  const handleContentSubmit = async (content: {
-    type: "text" | "image" | "empty" | "file";
-    data: string | null;
-    files?: File[];
-  }) => {
+  const handleContentSubmit = async (content: ContentType[]) => {
     console.log("Content submitted:", content);
 
-    if (content.type === "empty" || (!content.data && !content.files?.length)) {
-      // Close the drawer when empty content is submitted
+    if (content.length === 0) {
       setIsDrawerOpen(false);
       return;
     }
@@ -78,176 +83,89 @@ export default function BoxContent({
     setSubmitError(null);
 
     try {
-      const selectedFiles = content.files ?? [];
+      const textContentItem = content.find((item) => item.type === "text");
+      const imageFiles =
+        content.find((item) => item.type === "image")?.files ?? [];
+      const fileFiles =
+        content.find((item) => item.type === "file")?.files ?? [];
+      const selectedFiles = [...imageFiles, ...fileFiles];
+      const hasText = Boolean(textContentItem?.data?.trim());
+
+      const uploadedBinaryContent: UploadedBinaryContent[] = [];
       const failedUploads: Array<{ file: File; error: string }> = [];
-      const successfulUploads: Array<{
-        file: File;
-        fileUrl: string;
-        uploadType: "image" | "file";
-        storagePath: string;
-      }> = [];
 
-      // Upload selected files first and keep image/file cards behavior.
       if (selectedFiles.length > 0) {
-        const uploadPromises = selectedFiles.map(async (file) => {
-          const uploadType: "image" | "file" = file.type.startsWith("image/")
-            ? "image"
-            : "file";
-
-          try {
-            const formData = new FormData();
-            formData.append("file", file);
-            formData.append("boxId", boxId);
-            formData.append("uploadType", uploadType);
-
-            const response = await fetch("/api/upload-content", {
-              method: "POST",
-              body: formData,
-            });
-
-            const rawBody = await response.text();
-            let payload: { data?: { content?: string }; error?: string } = {};
+        const uploadResults = await Promise.all(
+          selectedFiles.map(async (file) => {
             try {
-              payload = rawBody ? JSON.parse(rawBody) : {};
-            } catch {
-              payload = { error: rawBody || "Upload failed" };
+              const uploaded = await uploadBinaryContent({
+                boxId,
+                file,
+                hideContent: hasText,
+              });
+              return { success: true as const, uploaded };
+            } catch (error) {
+              const message =
+                error instanceof Error
+                  ? error.message
+                  : "Unexpected error occurred";
+              return { success: false as const, file, error: message };
             }
+          }),
+        );
 
-            if (!response.ok) {
-              throw new Error(payload.error || "Upload failed");
-            }
-
-            const storagePath = payload.data?.content;
-            if (!storagePath) {
-              throw new Error("Upload succeeded but no storage path returned");
-            }
-
-            const fileUrl = URL.createObjectURL(file);
-            return {
-              success: true as const,
-              file,
-              fileUrl,
-              uploadType,
-              storagePath,
-            };
-          } catch (err) {
-            console.error(`Unexpected error uploading ${file.name}:`, err);
-            const message =
-              err instanceof Error ? err.message : "Unexpected error occurred";
-            return { success: false as const, file, error: message };
-          }
-        });
-
-        const uploadResults = await Promise.all(uploadPromises);
         uploadResults.forEach((result) => {
           if (result.success) {
-            successfulUploads.push(result);
+            uploadedBinaryContent.push(result.uploaded);
           } else {
             failedUploads.push({ file: result.file, error: result.error });
           }
         });
 
-        if (successfulUploads.length > 0) {
-          const newContentItems = successfulUploads.map((result) => ({
+        if (failedUploads.length > 0) {
+          const errorMessages = failedUploads
+            .map((result) => `${result.file.name}: ${result.error}`)
+            .join(", ");
+          setSubmitError(`Failed to upload: ${errorMessages}`);
+          return;
+        }
+
+        if (!hasText && uploadedBinaryContent.length > 0) {
+          // Files-only flow: keep image/file cards visible in local state.
+          const newContentItems = uploadedBinaryContent.map((item) => ({
             id: crypto.randomUUID(),
-            content: result.fileUrl,
-            type: result.uploadType,
-            file: result.file,
+            content: item.fileUrl,
+            type: item.uploadType,
+            file: item.file,
           }));
           setContent((prev) => [...prev, ...newContentItems]);
         }
       }
 
-      // When files were selected, at least one upload must succeed before saving text.
-      if (selectedFiles.length > 0 && successfulUploads.length === 0) {
-        const errorMessages = failedUploads
-          .map((result) => `${result.file.name}: ${result.error}`)
-          .join(", ");
-        setSubmitError(`Failed to upload: ${errorMessages}`);
-        return;
-      }
-
-      const trimmedText = content.data?.trim() ?? "";
-      const attachmentApiLinks = successfulUploads.map((result) => {
-        const query = new URLSearchParams({
+      if (hasText) {
+        const attachmentMarkdown = buildAttachmentMarkdown(
+          uploadedBinaryContent,
           boxId,
-          path: result.storagePath,
-          uploadType: result.uploadType,
-        });
-        return {
-          ...result,
-          link: `/api/storage-content?${query.toString()}`,
-        };
-      });
+        );
+        const finalTextContent = combineContent(
+          textContentItem?.data ?? "",
+          attachmentMarkdown,
+        );
 
-      const imageAttachmentLines = attachmentApiLinks
-        .filter((result) => result.uploadType === "image")
-        .map((result) => `![${result.file.name}](${result.link})`);
-
-      const fileAttachmentLines = attachmentApiLinks
-        .filter((result) => result.uploadType === "file")
-        .map((result) => `[${result.file.name}](${result.link})`);
-
-      const attachmentLines = [...imageAttachmentLines, ...fileAttachmentLines];
-      const attachmentMarkdown =
-        attachmentLines.length > 0
-          ? `## Attachments\n\n${attachmentLines.join("\n")}`
-          : "";
-
-      const finalTextContent = trimmedText
-        ? attachmentMarkdown
-          ? `${trimmedText}\n\n${attachmentMarkdown}`
-          : trimmedText
-        : attachmentMarkdown;
-
-      if (finalTextContent) {
-        const formData = new FormData();
-        formData.append("boxId", boxId);
-        formData.append("uploadType", "text");
-        formData.append("textContent", finalTextContent);
-
-        const response = await fetch("/api/upload-content", {
-          method: "POST",
-          body: formData,
+        await uploadTextContent({
+          boxId,
+          textContent: finalTextContent,
+          hideContent: false,
         });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          let errorMessage = "Upload failed";
-          try {
-            const errorJson = JSON.parse(errorText);
-            errorMessage = errorJson.error || errorMessage;
-          } catch {
-            errorMessage = errorText || errorMessage;
-          }
-          throw new Error(errorMessage);
-        }
-
-        const result = await response.json();
-        console.log("Result:", result);
-
-        // Add to local state
-        const newContent = {
+        const newTextContent = {
           id: crypto.randomUUID(),
           content: finalTextContent,
           type: "text" as const,
         };
-
-        setContent((prev) => [...prev, newContent]);
+        setContent((prev) => [...prev, newTextContent]);
       }
 
-      // Handle partial upload failures while keeping successful uploads and text save.
-      if (failedUploads.length > 0) {
-        const errorMessages = failedUploads
-          .map((result) => `${result.file.name}: ${result.error}`)
-          .join(", ");
-        setSubmitError(
-          `Some files failed to upload: ${errorMessages}. ${successfulUploads.length} file(s) uploaded successfully.`
-        );
-        return;
-      }
-
-      // Close the drawer on successful save.
       setIsDrawerOpen(false);
     } catch (err) {
       console.error("Unexpected error saving content:", err);

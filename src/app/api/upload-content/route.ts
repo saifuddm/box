@@ -13,6 +13,7 @@ export async function POST(request: NextRequest) {
     const uploadType = formData.get("uploadType") as string;
     const textContent = formData.get("textContent") as string | null;
     const file = formData.get("file") as File | null;
+    const hideContent = formData.get("hideContent") === "true";
 
     if (!boxId || !uploadType) {
       return new Response(
@@ -130,6 +131,7 @@ export async function POST(request: NextRequest) {
         .from("TextContent")
         .insert({
           box: boxId,
+          hide_content: hideContent,
           // TODO: add a content_format field (plain|markdown) for future migration support.
           content: textContent!.trim(), // Non-null assertion safe due to validation above
         })
@@ -176,6 +178,7 @@ export async function POST(request: NextRequest) {
         .insert({
           box: boxId,
           content: uploadData.path,
+          hide_content: hideContent,
         })
         .select("id, content, created_at")
         .single();
