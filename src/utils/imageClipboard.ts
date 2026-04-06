@@ -81,7 +81,7 @@ export async function copyImageToClipboard(
         await navigator.clipboard.write([clipboardItem]);
         onSuccess?.();
         return true;
-      } catch (directError) {
+      } catch {
       }
     }
 
