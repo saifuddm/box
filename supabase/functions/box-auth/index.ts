@@ -1,11 +1,21 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+const allowedOrigins = new Set(
+  (Deno.env.get("ALLOWED_ORIGINS") ?? "*").split(",").map((s) => s.trim())
+);
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("Origin") ?? "";
+  const allowOrigin = allowedOrigins.has("*") || allowedOrigins.has(origin)
+    ? (allowedOrigins.has("*") ? "*" : origin)
+    : "";
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
+  };
+}
 
 // Helper function to hash password using Web Crypto API
 async function hashPassword(password: string): Promise<string> {
@@ -45,7 +55,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "Box ID is required and must be a string" }),
         {
           status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         }
       );
     }
@@ -69,7 +79,7 @@ Deno.serve(async (req) => {
       console.log("Box:", box);
       return new Response(JSON.stringify({ error: "Box not found" }), {
         status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       });
     }
 
@@ -84,7 +94,7 @@ Deno.serve(async (req) => {
           }),
           {
             status: 401,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
           }
         );
       }
@@ -105,7 +115,7 @@ Deno.serve(async (req) => {
           }),
           {
             status: 401,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
           }
         );
       }
@@ -114,13 +124,13 @@ Deno.serve(async (req) => {
     console.log("Box authenticated");
     return new Response(JSON.stringify({ authenticated: true }), {
       status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("Function error:", error);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
   }
 });

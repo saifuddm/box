@@ -1,11 +1,21 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+const allowedOrigins = new Set(
+  (Deno.env.get("ALLOWED_ORIGINS") ?? "*").split(",").map((s) => s.trim())
+);
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("Origin") ?? "";
+  const allowOrigin = allowedOrigins.has("*") || allowedOrigins.has(origin)
+    ? (allowedOrigins.has("*") ? "*" : origin)
+    : "";
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
+  };
+}
 
 console.log("Hello from Cleanup Expired Boxes!");
 
@@ -72,7 +82,7 @@ async function deleteFileContent(supabaseClient: any, boxId: string) {
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: getCorsHeaders(req) });
   }
 
   try {
@@ -93,7 +103,7 @@ Deno.serve(async (req) => {
         }),
         {
           status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         },
       );
     }
@@ -124,7 +134,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "Failed to query expired boxes" }),
         {
           status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         },
       );
     }
@@ -137,7 +147,7 @@ Deno.serve(async (req) => {
           deletedCount: 0,
         }),
         {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         },
       );
     }
@@ -201,13 +211,13 @@ Deno.serve(async (req) => {
     console.log("Cleanup results:", response);
 
     return new Response(JSON.stringify(response), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("Error in cleanup-expired-boxes function:", error);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
   }
 });

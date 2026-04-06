@@ -90,7 +90,7 @@ Content is fetched **server-side only** after token validation. No content leaks
 
 ---
 
-### 5. CORS Allows All Origins
+### 5. CORS Allows All Origins — FIXED (partial: create-box intentionally open)
 
 **Files:** All Supabase edge functions (`box-auth`, `create-box`, `get-box-content`, `get-storage-content`, `box-cleanup`, `tutorial-box`)
 
@@ -99,6 +99,8 @@ Content is fetched **server-side only** after token validation. No content leaks
 **Impact:** Any website can make cross-origin requests to these functions. While JWT tokens are in HTTP-only cookies (not sent cross-origin by default), the create-box and tutorial-box functions have no auth requirement.
 
 **Recommendation:** Restrict CORS to your known domains or use credentials-based approach.
+
+**Fix:** `box-auth`, `tutorial-box`, `box-cleanup`, `get-box-content`, and `get-storage-content` now read `ALLOWED_ORIGIN` from env (falls back to `*` if unset for local dev). `create-box` remains open by design to support anonymous/automated box creation. Set `ALLOWED_ORIGIN=https://box.saifuddm.work` as a Supabase secret in production.
 
 ---
 
@@ -219,7 +221,7 @@ Content is fetched **server-side only** after token validation. No content leaks
 3. ~~**Fix box-cleanup auth check** (Critical #3)~~ — FIXED
 4. ~~**Add SameSite to cookies** (High #6 — quick fix)~~ — FIXED
 5. ~~**Constant-time hash comparison** (High #4)~~ — FIXED
-6. **Restrict CORS origins** (High #5)
+6. ~~**Restrict CORS origins** (High #5)~~ — FIXED (create-box intentionally open)
 7. **Password strength validation** (Medium #7)
 8. ~~**Fix 23h cleanup bug** (Medium #8)~~ — FIXED
 9. ~~**Remove console.log statements** (Medium #9)~~ — FIXED

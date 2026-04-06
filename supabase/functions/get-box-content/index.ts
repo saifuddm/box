@@ -2,11 +2,21 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { JWTPayload, jwtVerify } from "npm:jose@6.1.0";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+const allowedOrigins = new Set(
+  (Deno.env.get("ALLOWED_ORIGINS") ?? "*").split(",").map((s) => s.trim())
+);
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("Origin") ?? "";
+  const allowOrigin = allowedOrigins.has("*") || allowedOrigins.has(origin)
+    ? (allowedOrigins.has("*") ? "*" : origin)
+    : "";
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
+  };
+}
 // Helper function to fetch text content for a box
 async function fetchTextContent(supabaseClient: any, boxId: string) {
   const { data, error } = await supabaseClient
@@ -69,7 +79,7 @@ console.log("Hello from Get Box Content!");
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: getCorsHeaders(req) });
   }
 
   try {
@@ -81,7 +91,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "Unauthorized, no authorization token" }),
         {
           status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         }
       );
     }
@@ -104,7 +114,7 @@ Deno.serve(async (req) => {
           JSON.stringify({ error: "Token expired, please authenticate again" }),
           {
             status: 401,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
           }
         );
       }
@@ -116,7 +126,7 @@ Deno.serve(async (req) => {
           JSON.stringify({ error: "Unauthorized, invalid token" }),
           {
             status: 401,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
           }
         );
       }
@@ -129,7 +139,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "Unauthorized, invalid scope" }),
         {
           status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         }
       );
     }
@@ -141,7 +151,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "Unauthorized, invalid box ID" }),
         {
           status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         }
       );
     }
@@ -174,14 +184,14 @@ Deno.serve(async (req) => {
         data: contentWithType,
       }),
       {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
       }
     );
   } catch (error) {
     console.error("Function error:", error);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
   }
 });
