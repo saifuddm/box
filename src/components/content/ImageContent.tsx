@@ -30,7 +30,6 @@ function ImageContent({
   const [isCopying, setIsCopying] = useState(false);
 
   const getSignedUrl = useCallback(async () => {
-    console.log(`Getting signed URL for: ${src}`);
     try {
       const response = await fetch("/api/storage-content", {
         method: "POST",
@@ -43,7 +42,6 @@ function ImageContent({
         throw new Error(payload?.error || "Failed to fetch signed URL");
       }
 
-      console.log("Signed URL:", payload);
       setSourceUrl(payload.signedUrl);
     } catch (error) {
       console.error("Error getting signed URL:", error);
@@ -90,9 +88,6 @@ function ImageContent({
   }
 
   useEffect(() => {
-    console.log(
-      `ImageContent useEffect - fromSupabase: ${fromSupabase}, src: ${src}`
-    );
     if (fromSupabase && sourceUrl === src) {
       // Only call getSignedUrl if we haven't already fetched a signed URL
       getSignedUrl();

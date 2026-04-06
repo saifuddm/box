@@ -18,10 +18,12 @@ Also I hated that I have to login to everything so each box can be password prot
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: Next.js 15, React 19, TypeScript
-- **Backend**: Supabase (Database + Storage + Edge Functions)
-- **Styling**: Tailwind CSS 4, Radix UI components
+- **Frontend**: Next.js 15 (App Router) + React 19 + TypeScript
+- **Backend**: Supabase (PostgreSQL + Object Storage + Deno Edge Functions)
+- **Styling**: Tailwind CSS 4 + Shadcn/ui
 - **Deployment**: Vercel (Frontend) + Supabase (Backend)
+
+
 
 ## 🚀 Quick Start
 
@@ -73,7 +75,7 @@ Also I hated that I have to login to everything so each box can be password prot
    Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 
-## 🗄️ Database Schema
+## 🗄️ Database
 
 The application uses three main tables and one view:
 - `Box` - Container for all content with auto-expiry
@@ -81,6 +83,9 @@ The application uses three main tables and one view:
 - `ImageContent` - Uploaded images with storage references
 - `FileContent` - Uploaded files (e.g., PDF, CSV) with storage references
 - `PublicBox` (View) - View of `Box` but without the password_hash column
+
+Content table selects are restricted to `service_role` — content is only served through Edge Functions after JWT verification.
+
 
 ## 🔧 Edge Functions
 
@@ -92,7 +97,28 @@ The application uses three main tables and one view:
 - **upload-content** - Uploads images and files, creating entries in `ImageContent` or `FileContent` as appropriate.
 
 
+## Environment Variables
 
+- `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` — public Supabase config
+- `SUPABASE_NEXTJS_SERVICE_ROLE_KEY` — server-only, used for upload validation
+- `BOX_TOKEN_SECRET` — JWT signing secret, shared between Next.js API routes and Edge Functions
+
+
+
+
+
+## Auth Flow (no user accounts)
+
+1. User enters box password → `POST /api/box-auth` → calls `box-auth` Edge Function (validates against SHA-256 hash)
+2. On success, Next.js API issues HS256 JWT (`scope: "box:read-write"`, `sub: boxId`) signed with `BOX_TOKEN_SECRET`
+3. JWT stored in HttpOnly cookie `box_token_{boxId}` (1h or 24h expiry)
+4. Subsequent requests validated via JWT in cookie
+
+## Content Upload Flow
+
+- Text: validated for no raw HTML (via `unified`/`remark-parse`), inserted directly into `TextContent` table
+- Images/Files: uploaded to Supabase Storage buckets (`image-content`, `file-content`), metadata stored in `ImageContent`/`FileContent` tables
+- Storage access uses signed URLs issued by `get-storage-content` Edge Function
 
 ## 🙏 Acknowledgments
 

@@ -125,8 +125,6 @@ export async function POST(request: NextRequest) {
 
     if (uploadType === "text") {
       // Handle text content - insert directly into database
-      console.log(`Uploading text content to ${boxId}`);
-
       const { data: textData, error: textError } = await supabase
         .from("TextContent")
         .insert({
@@ -149,10 +147,6 @@ export async function POST(request: NextRequest) {
       content = textData;
     } else {
       // Handle image/file content - upload to storage then insert into database
-      console.log(
-        `Uploading ${file!.name} to ${boxId} with mime type ${file!.type}`
-      );
-
       // Convert file to Buffer directly (no base64 step!)
       const buffer = Buffer.from(await file!.arrayBuffer());
 

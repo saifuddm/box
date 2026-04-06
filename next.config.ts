@@ -19,8 +19,8 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  typedRoutes: false,
   experimental: {
-    typedRoutes: false,
     serverActions: {
       bodySizeLimit: "100mb",
     },

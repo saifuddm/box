@@ -69,8 +69,6 @@ export async function copyImageToClipboard(
     }
 
     const originalBlob = await response.blob();
-    console.log("Original image type:", originalBlob.type);
-
     // Define supported formats for direct clipboard copy
     const directlySupportedTypes = ["image/png"];
 
@@ -81,11 +79,9 @@ export async function copyImageToClipboard(
           [originalBlob.type]: originalBlob,
         });
         await navigator.clipboard.write([clipboardItem]);
-        console.log("Image copied to clipboard successfully (direct blob)");
         onSuccess?.();
         return true;
-      } catch (directError) {
-        console.log("Direct PNG copy failed, trying conversion:", directError);
+      } catch {
       }
     }
 
@@ -104,10 +100,6 @@ export async function copyImageToClipboard(
       convertibleTypes.includes(originalBlob.type) ||
       originalBlob.type.startsWith("image/")
     ) {
-      console.log(
-        `Converting ${originalBlob.type} to PNG for clipboard compatibility`
-      );
-
       const pngBlob = await convertImageToPng(imageUrl, maxCanvasSize);
 
       const clipboardItem = new ClipboardItem({
@@ -115,7 +107,6 @@ export async function copyImageToClipboard(
       });
 
       await navigator.clipboard.write([clipboardItem]);
-      console.log("Image copied to clipboard successfully (converted to PNG)");
       onSuccess?.();
       return true;
     }
@@ -167,10 +158,6 @@ async function convertImageToPng(
         canvas.width = width;
         canvas.height = height;
 
-        console.log(
-          `Converting image: ${img.naturalWidth}x${img.naturalHeight} -> ${width}x${height}`
-        );
-
         // Clear canvas with white background (important for transparent images)
         ctx.fillStyle = "#FFFFFF";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -182,7 +169,6 @@ async function convertImageToPng(
         canvas.toBlob(
           (blob) => {
             if (blob) {
-              console.log(`PNG conversion successful: ${blob.size} bytes`);
               resolve(blob);
             } else {
               reject(new Error("Failed to convert image to PNG blob"));
@@ -240,7 +226,6 @@ async function fallbackToCopyUrl(
   try {
     if (navigator.clipboard?.writeText) {
       await navigator.clipboard.writeText(imageUrl);
-      console.log("Fallback: Image URL copied to clipboard");
     } else {
       // Last resort: use deprecated execCommand
       const textArea = document.createElement("textarea");
@@ -253,7 +238,6 @@ async function fallbackToCopyUrl(
       textArea.select();
       document.execCommand("copy");
       document.body.removeChild(textArea);
-      console.log("Fallback: Image URL copied using execCommand");
     }
     onFallback?.();
   } catch (fallbackError) {

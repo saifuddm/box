@@ -8,18 +8,11 @@ function DevTesting() {
   const [boxName, setBoxName] = useState("");
 
   const handleGetAllBoxes = async () => {
-    const { data, error } = await supabase.from("PublicBox").select("*");
-    console.log(data);
-    console.log(error);
+    await supabase.from("PublicBox").select("*");
   };
 
   const handleGetSpecificBox = async ({ boxName }: { boxName: string }) => {
-    const { data, error } = await supabase
-      .from("PublicBox")
-      .select("*")
-      .eq("name", boxName);
-    console.log(data);
-    console.log(error);
+    await supabase.from("PublicBox").select("*").eq("name", boxName);
   };
 
   return (

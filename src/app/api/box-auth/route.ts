@@ -3,17 +3,6 @@ import { SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { NextRequest } from "next/server";
 
-// TODO: Remove this route
-export async function GET(request: NextRequest) {
-  try {
-    console.log("Request received", request);
-    return new Response("Hello, world!", { status: 200 });
-  } catch (err) {
-    console.error("Error", err);
-    return new Response("Error", { status: 500 });
-  }
-}
-
 export async function POST(request: NextRequest) {
   const { boxId, password, rememberPassword } = await request.json();
   const cookieStore = await cookies();
@@ -26,8 +15,6 @@ export async function POST(request: NextRequest) {
     const message = await response.error.context.text();
     const status = await response.error.context.status;
     const errorMessage = JSON.parse(message);
-
-    console.log("Error message:", errorMessage.error);
 
     return new Response(JSON.stringify(errorMessage), { status: status });
   }
@@ -43,6 +30,7 @@ export async function POST(request: NextRequest) {
   cookieStore.set(`box_token_${boxId}`, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
     maxAge: rememberPassword ? 60 * 60 * 24 : 60 * 60,
     path: "/",
   });

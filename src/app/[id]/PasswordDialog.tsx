@@ -43,6 +43,7 @@ export default function PasswordDialog({
       setIsSubmitting(true);
       handleSubmit();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [passwordProtected]);
 
   const handleSubmit = async (e?: React.FormEvent) => {

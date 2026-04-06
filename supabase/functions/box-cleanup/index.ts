@@ -1,11 +1,21 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+const allowedOrigins = new Set(
+  (Deno.env.get("ALLOWED_ORIGINS") ?? "*").split(",").map((s) => s.trim())
+);
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get("Origin") ?? "";
+  const allowOrigin = allowedOrigins.has("*") || allowedOrigins.has(origin)
+    ? (allowedOrigins.has("*") ? "*" : origin)
+    : "";
+  return {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
+  };
+}
 
 console.log("Hello from Cleanup Expired Boxes!");
 
@@ -72,7 +82,7 @@ async function deleteFileContent(supabaseClient: any, boxId: string) {
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: getCorsHeaders(req) });
   }
 
   try {
@@ -81,7 +91,11 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!authHeader || !authHeader.includes(serviceRoleKey ?? "")) {
+    if (
+      !authHeader ||
+      !serviceRoleKey ||
+      authHeader !== `Bearer ${serviceRoleKey}`
+    ) {
       console.warn("Unauthorized access attempt to box-cleanup function");
       return new Response(
         JSON.stringify({
@@ -89,7 +103,7 @@ Deno.serve(async (req) => {
         }),
         {
           status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         },
       );
     }
@@ -97,12 +111,12 @@ Deno.serve(async (req) => {
     // Create Supabase client with service role key for full access
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      serviceRoleKey ?? "",
     );
 
     // Calculate the cutoff time (24 hours ago)
     const twentyFourHoursAgo = new Date();
-    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 23);
+    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
 
     console.log(
       `Looking for boxes created before: ${twentyFourHoursAgo.toISOString()}`,
@@ -120,7 +134,7 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "Failed to query expired boxes" }),
         {
           status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         },
       );
     }
@@ -133,7 +147,7 @@ Deno.serve(async (req) => {
           deletedCount: 0,
         }),
         {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
         },
       );
     }
@@ -183,6 +197,19 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Delete expired rate limit windows (older than 15 minutes)
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const { error: rateLimitCleanupError } = await supabaseClient
+      .from("auth_rate_limits")
+      .delete()
+      .lt("window_start", fifteenMinutesAgo);
+
+    if (rateLimitCleanupError) {
+      console.warn("Warning: Could not clean up rate limit entries:", rateLimitCleanupError);
+    } else {
+      console.log("Rate limit entries cleaned up");
+    }
+
     // Fire-and-forget tutorial-box invocation after cleanup.
     // We do not block cleanup response on tutorial-box completion.
     supabaseClient.functions.invoke("tutorial-box", { body: {} });
@@ -197,13 +224,13 @@ Deno.serve(async (req) => {
     console.log("Cleanup results:", response);
 
     return new Response(JSON.stringify(response), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("Error in cleanup-expired-boxes function:", error);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
     });
   }
 });
