@@ -74,6 +74,8 @@ Deno.serve(async (req) => {
         ? body.uploadType
         : null;
 
+    console.log(`Storage content request - box: ${boxId}, path: ${path}, type: ${uploadType}`);
+
     if (!path || !uploadType) {
       return new Response(
         JSON.stringify({ error: "path and uploadType are required" }),
@@ -127,6 +129,8 @@ Deno.serve(async (req) => {
         "http://localhost:54321"
       );
     }
+
+    console.log(`Signed URL created for ${path}`);
 
     // Return the content
     return new Response(JSON.stringify({ signedUrl: finalSignedUrl }), {

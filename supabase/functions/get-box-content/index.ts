@@ -135,6 +135,7 @@ Deno.serve(async (req) => {
     }
 
     const boxId = typeof payload.sub === "string" ? payload.sub : null;
+    console.log(`Get box content request for box: ${boxId}`);
     if (!boxId) {
       return new Response(
         JSON.stringify({ error: "Unauthorized, invalid box ID" }),
@@ -164,6 +165,8 @@ Deno.serve(async (req) => {
       ...imageContent,
       ...fileContent,
     ].sort((a, b) => a.created_at.localeCompare(b.created_at));
+
+    console.log(`Returning ${contentWithType.length} content items for box: ${boxId} (text: ${textContent.length}, images: ${imageContent.length}, files: ${fileContent.length})`);
 
     // Return the content
     return new Response(

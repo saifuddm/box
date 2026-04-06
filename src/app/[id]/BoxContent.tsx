@@ -61,7 +61,6 @@ export default function BoxContent({
 
   // Initialize content from props
   useEffect(() => {
-    console.log("Initial content:", initialContent);
     const formattedContent = initialContent.map((item) => ({
       id: item.id,
       content: item.content,
@@ -72,8 +71,6 @@ export default function BoxContent({
   }, [initialContent]);
 
   const handleContentSubmit = async (content: ContentType[]) => {
-    console.log("Content submitted:", content);
-
     if (content.length === 0) {
       setIsDrawerOpen(false);
       return;

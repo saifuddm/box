@@ -81,7 +81,11 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!authHeader || !authHeader.includes(serviceRoleKey ?? "")) {
+    if (
+      !authHeader ||
+      !serviceRoleKey ||
+      authHeader !== `Bearer ${serviceRoleKey}`
+    ) {
       console.warn("Unauthorized access attempt to box-cleanup function");
       return new Response(
         JSON.stringify({
@@ -97,12 +101,12 @@ Deno.serve(async (req) => {
     // Create Supabase client with service role key for full access
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      serviceRoleKey ?? "",
     );
 
     // Calculate the cutoff time (24 hours ago)
     const twentyFourHoursAgo = new Date();
-    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 23);
+    twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24);
 
     console.log(
       `Looking for boxes created before: ${twentyFourHoursAgo.toISOString()}`,

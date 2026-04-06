@@ -20,6 +20,21 @@ async function hashPassword(password: string): Promise<string> {
 }
 console.log("Hello from Box Auth!");
 
+// Constant-time string comparison to prevent timing attacks
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  const encoder = new TextEncoder();
+  const bufA = encoder.encode(a);
+  const bufB = encoder.encode(b);
+  let result = 0;
+  for (let i = 0; i < bufA.length; i++) {
+    result |= bufA[i] ^ bufB[i];
+  }
+  return result === 0;
+}
+
 Deno.serve(async (req) => {
   try {
     const { boxId, password } = await req.json();
@@ -74,9 +89,12 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Hash the provided password and compare with stored hash
+      // Hash the provided password and compare with stored hash (constant-time)
       const hashedPassword = await hashPassword(password);
-      const isPasswordValid = hashedPassword === box.password_hash;
+      const isPasswordValid = constantTimeEqual(
+        hashedPassword,
+        box.password_hash ?? ""
+      );
 
       if (!isPasswordValid) {
         console.log("Debugging (Password Validation):", isPasswordValid);

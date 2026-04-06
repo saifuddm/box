@@ -12,8 +12,6 @@ interface BoxShareButtonProps {
 
 function BoxShareButton({ boxName, boxId }: BoxShareButtonProps) {
   function handleShare(): void {
-    console.log("Sharing box");
-
     const shareData = {
       title: `${boxName} - Box`,
       text: `Check out this box: ${boxName}`,
@@ -38,7 +36,6 @@ function BoxShareButton({ boxName, boxId }: BoxShareButtonProps) {
       navigator.clipboard
         .writeText(url)
         .then(() => {
-          console.log("Link copied to clipboard");
           toast("Box link copied to clipboard", {
             description: "Share with your friends",
           });
@@ -69,7 +66,6 @@ function BoxShareButton({ boxName, boxId }: BoxShareButtonProps) {
 
     try {
       document.execCommand("copy");
-      console.log("Link copied to clipboard (fallback method)");
     } catch (error) {
       console.error("Failed to copy link (fallback method):", error);
     }

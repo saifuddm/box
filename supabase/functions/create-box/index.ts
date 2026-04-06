@@ -19,6 +19,8 @@ async function hashPassword(password: string): Promise<string> {
   return hashHex;
 }
 
+console.log("Hello from Create Box!");
+
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -85,6 +87,8 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    console.log(`Box created: ${data.id} (${data.name}), password_protected: ${data.password_protected}`);
 
     return new Response(JSON.stringify({ data }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -9,8 +9,6 @@ function DevTesting() {
 
   const handleGetAllBoxes = async () => {
     const { data, error } = await supabase.from("PublicBox").select("*");
-    console.log(data);
-    console.log(error);
   };
 
   const handleGetSpecificBox = async ({ boxName }: { boxName: string }) => {
@@ -18,8 +16,6 @@ function DevTesting() {
       .from("PublicBox")
       .select("*")
       .eq("name", boxName);
-    console.log(data);
-    console.log(error);
   };
 
   return (

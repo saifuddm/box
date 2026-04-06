@@ -21,8 +21,6 @@ export default function CreateForm() {
     const boxPassword = formData.get("boxPassword");
 
     try {
-      console.log(boxName, boxPassword);
-
       // Call the edge function instead of direct database insert
       const { data: createBoxData, error: createBoxError } =
         await supabase.functions.invoke("create-box", {
