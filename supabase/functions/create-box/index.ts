@@ -7,16 +7,32 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// Helper function to hash password using Web Crypto API
+// Derive a PBKDF2 hash from a password with a random salt.
+// Returns a string in the format: pbkdf2:{salt_hex}:{hash_hex}
 async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-  return hashHex;
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+
+  const hashBuffer = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt, hash: "SHA-256", iterations: 310_000 },
+    keyMaterial,
+    256,
+  );
+
+  const toHex = (buf: ArrayBuffer) =>
+    Array.from(new Uint8Array(buf))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+  return `pbkdf2:${toHex(salt.buffer)}:${toHex(hashBuffer)}`;
 }
 
 console.log("Hello from Create Box!");

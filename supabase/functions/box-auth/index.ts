@@ -20,22 +20,44 @@ function getCorsHeaders(req: Request): Record<string, string> {
   };
 }
 
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
+// Verify a password against a stored PBKDF2 hash.
+// Expected format: pbkdf2:{salt_hex}:{hash_hex}
+async function verifyPassword(
+  password: string,
+  stored: string,
+): Promise<boolean> {
+  const parts = stored.split(":");
+  if (parts.length !== 3 || parts[0] !== "pbkdf2") return false;
 
-function constantTimeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
+  const [, saltHex, hashHex] = parts;
+
+  const fromHex = (hex: string) =>
+    new Uint8Array(hex.match(/.{2}/g)!.map((b) => parseInt(b, 16)));
+
+  const salt = fromHex(saltHex);
   const encoder = new TextEncoder();
-  const bufA = encoder.encode(a);
-  const bufB = encoder.encode(b);
+
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+
+  const derivedBuffer = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt, hash: "SHA-256", iterations: 310_000 },
+    keyMaterial,
+    256,
+  );
+
+  const derived = new Uint8Array(derivedBuffer);
+  const expected = fromHex(hashHex);
+
+  if (derived.length !== expected.length) return false;
   let result = 0;
-  for (let i = 0; i < bufA.length; i++) {
-    result |= bufA[i] ^ bufB[i];
+  for (let i = 0; i < derived.length; i++) {
+    result |= derived[i] ^ expected[i];
   }
   return result === 0;
 }
@@ -206,9 +228,8 @@ Deno.serve(async (req) => {
         );
       }
 
-      const hashedPassword = await hashPassword(password);
-      const isPasswordValid = constantTimeEqual(
-        hashedPassword,
+      const isPasswordValid = await verifyPassword(
+        password,
         box.password_hash ?? "",
       );
 

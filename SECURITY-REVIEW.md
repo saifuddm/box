@@ -25,24 +25,24 @@ Content is fetched **server-side only** after token validation. No content leaks
 
 ## Critical Severity
 
-### 1. SHA-256 Password Hashing (No Salt)
+### 1. SHA-256 Password Hashing (No Salt) — FIXED
 
 **Files:**
 - `supabase/functions/box-auth/index.ts`
 - `supabase/functions/create-box/index.ts`
 
-**Problem:** Passwords are hashed with plain SHA-256 — no salt, no key stretching. This is a fast hash designed for data integrity, not password storage.
+**Problem:** Passwords were hashed with plain SHA-256 — no salt, no key stretching. This is a fast hash designed for data integrity, not password storage.
 
 **Impact:**
 - Identical passwords always produce the same hash
 - Vulnerable to rainbow table attacks
 - If the database is compromised, passwords are trivially crackable
 
-**Recommendation:** Replace with bcrypt, Argon2, or PBKDF2 with a random per-password salt. Migration needed to rehash existing passwords.
+**Fix:** Replaced SHA-256 with PBKDF2-SHA256 (310,000 iterations, 16-byte random salt per password) using the Web Crypto API. Stored format in `password_hash`: `pbkdf2:{salt_hex}:{hash_hex}`. Verification re-derives the key using the stored salt and performs a constant-time byte comparison.
 
 ---
 
-### 2. No Rate Limiting on Password Attempts
+### 2. No Rate Limiting on Password Attempts - FIXED
 
 **Files:**
 - `supabase/functions/box-auth/index.ts`
@@ -183,19 +183,19 @@ Content is fetched **server-side only** after token validation. No content leaks
 
 ### Current State (Post-Migration 20260311102853)
 
-| Table | RLS Enabled | Anon SELECT | Anon INSERT | Service Role | Notes |
-|---|---|---|---|---|---|
-| **Box** | Yes | Columns only: `id, name, created_at, password_protected` | Yes (with restrictive policy blocking "tutorial" name) | Full access | `password_hash` not exposed to anon |
-| **TextContent** | Yes | Denied (`using(false)`) | Denied (revoked) | Full access | Properly locked down |
-| **ImageContent** | Yes | Denied (`using(false)`) | Denied (revoked) | Full access | Properly locked down |
-| **FileContent** | Yes | Denied (`using(false)`) | Denied (revoked) | Full access | Properly locked down |
+| Table            | RLS Enabled | Anon SELECT                                              | Anon INSERT                                            | Service Role | Notes                               |
+| ---------------- | ----------- | -------------------------------------------------------- | ------------------------------------------------------ | ------------ | ----------------------------------- |
+| **Box**          | Yes         | Columns only: `id, name, created_at, password_protected` | Yes (with restrictive policy blocking "tutorial" name) | Full access  | `password_hash` not exposed to anon |
+| **TextContent**  | Yes         | Denied (`using(false)`)                                  | Denied (revoked)                                       | Full access  | Properly locked down                |
+| **ImageContent** | Yes         | Denied (`using(false)`)                                  | Denied (revoked)                                       | Full access  | Properly locked down                |
+| **FileContent**  | Yes         | Denied (`using(false)`)                                  | Denied (revoked)                                       | Full access  | Properly locked down                |
 
 ### Storage Buckets
 
-| Bucket | Public | Size Limit | MIME Types | RLS Policies |
-|---|---|---|---|---|
-| `image-content` | No | 50 MiB | `image/*` | None (app-level gating via signed URLs) |
-| `file-content` | No | 50 MiB | `*/*` | None (app-level gating via signed URLs) |
+| Bucket          | Public | Size Limit | MIME Types | RLS Policies                            |
+| --------------- | ------ | ---------- | ---------- | --------------------------------------- |
+| `image-content` | No     | 50 MiB     | `image/*`  | None (app-level gating via signed URLs) |
+| `file-content`  | No     | 50 MiB     | `*/*`      | None (app-level gating via signed URLs) |
 
 **Note:** Storage access is controlled at the application level through JWT-validated signed URLs. No direct anon access is possible. However, adding explicit storage RLS policies would provide defense-in-depth.
 
@@ -216,8 +216,8 @@ Content is fetched **server-side only** after token validation. No content leaks
 
 ## Priority Fix Order (Suggested)
 
-1. **SHA-256 -> bcrypt/Argon2** (Critical #1)
-2. **Rate limiting on auth** (Critical #2)
+1. ~~**SHA-256 -> bcrypt/Argon2** (Critical #1)~~ — FIXED
+2. ~~**Rate limiting on auth** (Critical #2) ~~ - FIXED
 3. ~~**Fix box-cleanup auth check** (Critical #3)~~ — FIXED
 4. ~~**Add SameSite to cookies** (High #6 — quick fix)~~ — FIXED
 5. ~~**Constant-time hash comparison** (High #4)~~ — FIXED
