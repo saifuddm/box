@@ -197,6 +197,19 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Delete expired rate limit windows (older than 15 minutes)
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const { error: rateLimitCleanupError } = await supabaseClient
+      .from("auth_rate_limits")
+      .delete()
+      .lt("window_start", fifteenMinutesAgo);
+
+    if (rateLimitCleanupError) {
+      console.warn("Warning: Could not clean up rate limit entries:", rateLimitCleanupError);
+    } else {
+      console.log("Rate limit entries cleaned up");
+    }
+
     // Fire-and-forget tutorial-box invocation after cleanup.
     // We do not block cleanup response on tutorial-box completion.
     supabaseClient.functions.invoke("tutorial-box", { body: {} });
