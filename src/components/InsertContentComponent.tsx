@@ -16,6 +16,7 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
+import { DrawerFooter } from "@/components/ui/drawer";
 import { containsHtmlElements } from "@/lib/markdown";
 
 interface FileType {
@@ -33,11 +34,13 @@ interface ContentType {
 interface InsertContentComponentProps {
   onSubmit?: (content: ContentType[]) => void;
   onClose?: () => void;
+  submitError?: string | null;
 }
 
 function InsertContentComponent({
   onSubmit,
   onClose,
+  submitError,
 }: InsertContentComponentProps) {
   const [textContent, setTextContent] = useState("");
   const [textValidationError, setTextValidationError] = useState<string | null>(
@@ -239,40 +242,47 @@ function InsertContentComponent({
     textContent.trim() || imageFiles.length > 0 || fileFiles.length > 0;
 
   return (
-    <div className="space-y-4">
-      {/* Text Input Section */}
-      <div className="space-y-2">
-        <label
-          htmlFor="content-text"
-          className="text-sm font-medium text-foreground"
-        >
-          Text Content (Markdown supported)
-        </label>
-        <Textarea
-          id="content-text"
-          placeholder="Write markdown here (for example: ## Heading, **bold**, - list)"
-          value={textContent}
-          onChange={(e) => {
-            setTextContent(e.target.value);
-            if (textValidationError) {
-              setTextValidationError(null);
-            }
-          }}
-          className="min-h-[100px] resize-none"
-        />
-        {textValidationError && (
-          <p className="text-sm text-maroon">{textValidationError}</p>
+    <>
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-4">
+        {submitError && (
+          <div className="text-sm p-2 border border-maroon rounded bg-maroon/10 text-maroon">
+            {submitError}
+          </div>
         )}
 
-        <Button
-          onClick={handlePasteText}
-          variant="secondary"
-          className="cursor-pointer w-full"
-        >
-          <Clipboard />
-          Paste Text from Clipboard
-        </Button>
-      </div>
+        {/* Text Input Section */}
+        <div className="space-y-2">
+          <label
+            htmlFor="content-text"
+            className="text-sm font-medium text-foreground"
+          >
+            Text Content (Markdown supported)
+          </label>
+          <Textarea
+            id="content-text"
+            placeholder="Write markdown here (for example: ## Heading, **bold**, - list)"
+            value={textContent}
+            onChange={(e) => {
+              setTextContent(e.target.value);
+              if (textValidationError) {
+                setTextValidationError(null);
+              }
+            }}
+            className="min-h-[100px] resize-none"
+          />
+          {textValidationError && (
+            <p className="text-sm text-maroon">{textValidationError}</p>
+          )}
+
+          <Button
+            onClick={handlePasteText}
+            variant="secondary"
+            className="cursor-pointer w-full"
+          >
+            <Clipboard />
+            Paste Text from Clipboard
+          </Button>
+        </div>
 
       {/* Divider */}
       <div className="relative">
@@ -416,34 +426,13 @@ function InsertContentComponent({
         )}
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex gap-2 pt-2">
+      </div>
+
+      <DrawerFooter className="flex-row">
         <Button onClick={handleSubmit} className="flex-1 cursor-pointer">
           <Plus />
           Add Content
         </Button>
-
-        <AlertDialog
-          open={showEmptyContentDialog}
-          onOpenChange={setShowEmptyContentDialog}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Empty Content</AlertDialogTitle>
-              <AlertDialogDescription>
-                Please add some content before submitting.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={handleEmptyContentCancel}>
-                Go back to Box
-              </AlertDialogCancel>
-              <AlertDialogAction onClick={handleEmptyContentContinue}>
-                Add Content
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
 
         <Button
           onClick={handleCloseOrClear}
@@ -452,8 +441,30 @@ function InsertContentComponent({
         >
           {hasContent ? "Clear" : "Close"}
         </Button>
-      </div>
-    </div>
+      </DrawerFooter>
+
+      <AlertDialog
+        open={showEmptyContentDialog}
+        onOpenChange={setShowEmptyContentDialog}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Empty Content</AlertDialogTitle>
+            <AlertDialogDescription>
+              Please add some content before submitting.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleEmptyContentCancel}>
+              Go back to Box
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleEmptyContentContinue}>
+              Add Content
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

@@ -318,17 +318,11 @@ export default function BoxContent({
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <div className="px-4 pb-4 overflow-y-auto flex-1">
-                {submitError && (
-                  <div className=" text-sm p-2 border border-maroon rounded bg-maroon/10 text-maroon">
-                    {submitError}
-                  </div>
-                )}
-                <InsertContentComponent
-                  onSubmit={handleContentSubmit}
-                  onClose={handleDrawerClose}
-                />
-              </div>
+              <InsertContentComponent
+                onSubmit={handleContentSubmit}
+                onClose={handleDrawerClose}
+                submitError={submitError}
+              />
             )}
           </DrawerContent>
         </Drawer>
