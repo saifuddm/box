@@ -2,7 +2,6 @@ import { MenuNav } from "@/components/MenuDrawer";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
-import QuickCreateButton from "./QuickCreateButton";
 
 export default function Home() {
   return (
@@ -86,8 +85,6 @@ export default function Home() {
             <Link href="/search">Search Box</Link>
           </Button>
         </div>
-
-        <QuickCreateButton />
 
         <div className="flex flex-col gap-2 text-center sm:text-left">
           <p className="text-sm text-muted-foreground opacity-50">

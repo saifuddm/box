@@ -184,7 +184,7 @@ export default function QuickCreateButton() {
       <div className="flex flex-col items-center gap-3 sm:flex-row">
         <Button
           type="button"
-          variant="secondary"
+          variant="outline"
           onClick={() => handleQuickCreate(false)}
           disabled={isLoading}
           className="cursor-pointer"

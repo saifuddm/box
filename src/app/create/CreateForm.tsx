@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 import { useState } from "react";
+import QuickCreateButton from "../QuickCreateButton";
 
 export default function CreateForm() {
   const router = useRouter();
@@ -90,9 +91,12 @@ export default function CreateForm() {
         />
       </div>
 
-      <Button type="submit" className="cursor-pointer" disabled={isLoading}>
-        {isLoading ? "Creating..." : "Create Box"}
-      </Button>
+      <div className="flex flex-col items-center gap-3 sm:flex-row">
+        <Button type="submit" className="cursor-pointer" disabled={isLoading}>
+          {isLoading ? "Creating..." : "Create Box"}
+        </Button>
+        <QuickCreateButton />
+      </div>
     </form>
   );
 }
