@@ -181,24 +181,28 @@ export default function QuickCreateButton() {
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <Button
-        type="button"
-        variant="secondary"
-        onClick={() => handleQuickCreate(false)}
-        disabled={isLoading}
-        className="cursor-pointer"
-      >
-        {loadingType === "public" ? "Creating..." : "Quick Create"}
-      </Button>
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => handleQuickCreate(true)}
-        disabled={isLoading}
-        className="cursor-pointer"
-      >
-        {loadingType === "password" ? "Creating..." : "Quick Create Protected"}
-      </Button>
+      <div className="flex flex-col items-center gap-3 sm:flex-row">
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => handleQuickCreate(false)}
+          disabled={isLoading}
+          className="cursor-pointer"
+        >
+          {loadingType === "public" ? "Creating..." : "Quick Create"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => handleQuickCreate(true)}
+          disabled={isLoading}
+          className="cursor-pointer"
+        >
+          {loadingType === "password"
+            ? "Creating..."
+            : "Quick Create Protected"}
+        </Button>
+      </div>
       {error && (
         <p className="max-w-xs text-center text-sm text-red-500" role="alert">
           {error}

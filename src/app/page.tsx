@@ -79,7 +79,6 @@ export default function Home() {
         </div>
 
         <div className="flex gap-4 items-center flex-col sm:flex-row w-full justify-center">
-          <QuickCreateButton />
           <Button asChild variant="default">
             <Link href="/create">Create Box</Link>
           </Button>
@@ -87,6 +86,8 @@ export default function Home() {
             <Link href="/search">Search Box</Link>
           </Button>
         </div>
+
+        <QuickCreateButton />
 
         <div className="flex flex-col gap-2 text-center sm:text-left">
           <p className="text-sm text-muted-foreground opacity-50">
