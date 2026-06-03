@@ -341,11 +341,12 @@ export default function BoxContent({
         {renderContent()}
       </div>
       <div className="col-span-2 lg:col-span-1 rounded-lg border bg-background/80 p-4 text-sm text-muted-foreground shadow-xs">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2">
           <p className="text-wrap">
-            Created at: {new Date(boxCreatedAt).toLocaleString()}
+            <span className="block">Created at:</span>
+            <span className="block">{new Date(boxCreatedAt).toLocaleString()}</span>
           </p>
-          <p className="font-medium text-foreground">
+          <p className="font-medium text-foreground whitespace-nowrap">
             {formatRemainingTime(timeRemaining)}
           </p>
         </div>
