@@ -28,6 +28,28 @@ import {
 } from "@/utils/BoxContentHelper";
 // Removed server-only import
 
+const BOX_LIFETIME_MS = 24 * 60 * 60 * 1000;
+
+function formatRemainingTime(milliseconds: number) {
+  if (milliseconds <= 0) {
+    return "Awaiting cleanup";
+  }
+
+  const totalMinutes = Math.ceil(milliseconds / (60 * 1000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours === 0) {
+    return `${minutes}m remaining`;
+  }
+
+  if (minutes === 0) {
+    return `${hours}h remaining`;
+  }
+
+  return `${hours}h ${minutes}m remaining`;
+}
+
 interface BoxContentProps {
   boxId: string;
   boxName: string;
@@ -58,6 +80,15 @@ export default function BoxContent({
   >([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState<number | null>(null);
+
+  const createdTime = new Date(boxCreatedAt).getTime();
+  const expiresTime = createdTime + BOX_LIFETIME_MS;
+  const timeRemaining = Math.max(
+    0,
+    expiresTime - (currentTime ?? createdTime),
+  );
+  const remainingPercent = Math.round((timeRemaining / BOX_LIFETIME_MS) * 100);
 
   // Initialize content from props
   useEffect(() => {
@@ -69,6 +100,15 @@ export default function BoxContent({
     }));
     setContent(formattedContent);
   }, [initialContent]);
+
+  useEffect(() => {
+    setCurrentTime(Date.now());
+    const interval = window.setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 60 * 1000);
+
+    return () => window.clearInterval(interval);
+  }, []);
 
   const handleContentSubmit = async (content: ContentType[]) => {
     if (content.length === 0) {
@@ -300,9 +340,33 @@ export default function BoxContent({
       >
         {renderContent()}
       </div>
-      <p className="text-sm text-muted-foreground text-wrap">
-        Created at: {new Date(boxCreatedAt).toLocaleString()}
-      </p>
+      <div className="col-span-2 lg:col-span-1 rounded-lg border bg-background/80 p-4 text-sm text-muted-foreground shadow-xs">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-wrap">
+            Created at: {new Date(boxCreatedAt).toLocaleString()}
+          </p>
+          <p className="font-medium text-foreground">
+            {formatRemainingTime(timeRemaining)}
+          </p>
+        </div>
+        <div
+          className="mt-3 h-2 overflow-hidden rounded-full bg-muted"
+          role="progressbar"
+          aria-label="Box time remaining"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={remainingPercent}
+        >
+          <div
+            className="h-full rounded-full bg-primary transition-[width] duration-500"
+            style={{ width: `${remainingPercent}%` }}
+          />
+        </div>
+        <p className="mt-2 text-xs">
+          Boxes expire 24 hours after creation and are deleted by the cleanup
+          job.
+        </p>
+      </div>
     </div>
   );
 }
