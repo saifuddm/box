@@ -2,6 +2,7 @@ import { MenuNav } from "@/components/MenuDrawer";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
+import QuickCreateButton from "./QuickCreateButton";
 
 export default function Home() {
   return (
@@ -78,6 +79,7 @@ export default function Home() {
         </div>
 
         <div className="flex gap-4 items-center flex-col sm:flex-row w-full justify-center">
+          <QuickCreateButton />
           <Button asChild variant="default">
             <Link href="/create">Create Box</Link>
           </Button>
