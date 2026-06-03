@@ -1,5 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import PasswordDialog from "./PasswordDialog";
 import BoxContent from "./BoxContent";
 import { Metadata } from "next";
@@ -52,7 +52,7 @@ export default async function BoxPage({ params }: BoxPageProps) {
 
   if (boxError || !box || !box.name || !box.created_at) {
     console.error("Box not found or error:", boxError);
-    redirect("/");
+    notFound();
   }
 
   // Read token cookie (if present)
@@ -92,6 +92,10 @@ export default async function BoxPage({ params }: BoxPageProps) {
           />
         </div>
       );
+    }
+
+    if (status === 404) {
+      notFound();
     }
 
     redirect("/");
