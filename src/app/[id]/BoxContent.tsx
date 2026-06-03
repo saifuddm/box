@@ -1,6 +1,17 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Drawer,
   DrawerContent,
   DrawerDescription,
@@ -15,9 +26,10 @@ import {
 import { Button } from "@/components/ui/button";
 import TextContent from "@/components/content/TextContent";
 import ImageContent from "@/components/content/ImageContent";
-import { HomeIcon, Loader2, PlusCircleIcon } from "lucide-react";
+import { HomeIcon, Loader2, PlusCircleIcon, Trash2Icon } from "lucide-react";
 import BoxShareButton from "@/components/BoxShareButton";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import FileContent from "@/components/content/FileContent";
 import { toast } from "sonner";
 import { containsHtmlElements } from "@/lib/markdown";
@@ -31,6 +43,10 @@ import {
 // Removed server-only import
 
 const BOX_LIFETIME_MS = 24 * 60 * 60 * 1000;
+
+function isTutorialBoxName(name: string) {
+  return name.trim().toLowerCase() === "tutorial";
+}
 
 function isEditablePasteTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) {
@@ -147,7 +163,9 @@ export default function BoxContent({
   boxCreatedAt,
   initialContent,
 }: BoxContentProps) {
+  const router = useRouter();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [content, setContent] = useState<
     {
       id: string;
@@ -158,6 +176,8 @@ export default function BoxContent({
     }[]
   >([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState<number | null>(null);
   const isSavingRef = useRef(false);
@@ -169,6 +189,7 @@ export default function BoxContent({
     expiresTime - (currentTime ?? createdTime),
   );
   const remainingPercent = Math.round((timeRemaining / BOX_LIFETIME_MS) * 100);
+  const canDeleteBox = !isTutorialBoxName(boxName);
 
   const saveContent = useCallback(
     async (
@@ -401,6 +422,36 @@ export default function BoxContent({
     setSubmitError(null);
   };
 
+  const handleDeleteBox = async () => {
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      const response = await fetch("/api/delete-box", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ boxId }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error ?? "Could not mark this box for deletion.");
+      }
+
+      toast.success("Box marked for deletion. Cleanup will remove it soon.");
+      router.replace("/");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not mark this box for deletion.";
+      setDeleteError(message);
+      toast.error(message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   function renderContent() {
     // Create 3 columns to distribute content
     const threeColumns: React.ReactElement[][] = [[], [], []];
@@ -471,6 +522,63 @@ export default function BoxContent({
       </div>
       {/* <p className="text-sm text-muted-foreground text-wrap">ID: {boxId}</p> */}
       <div id="actions" className="flex gap-2 sticky top-6 justify-end z-10">
+        {canDeleteBox && (
+          <AlertDialog
+            open={isDeleteDialogOpen}
+            onOpenChange={(open) => {
+              if (!isDeleting) {
+                setIsDeleteDialogOpen(open);
+                setDeleteError(null);
+              }
+            }}
+          >
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="destructive"
+                className="cursor-pointer"
+                disabled={isSubmitting || isDeleting}
+                size="lg"
+                aria-label="Delete box"
+              >
+                <Trash2Icon />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete /{boxName}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will mark the box as expired. The cleanup job runs about
+                  every 90 minutes and will permanently delete the box and its
+                  contents.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              {deleteError && (
+                <div className="text-sm p-2 border border-destructive rounded bg-destructive/10 text-destructive">
+                  {deleteError}
+                </div>
+              )}
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isDeleting}>
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  disabled={isDeleting}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    handleDeleteBox();
+                  }}
+                  className="bg-destructive text-white hover:bg-destructive/90"
+                >
+                  {isDeleting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    "Delete box"
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
         <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
           <DrawerTrigger asChild>
             <Button
