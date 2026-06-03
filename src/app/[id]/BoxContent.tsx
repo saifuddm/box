@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Drawer,
   DrawerContent,
@@ -19,6 +19,8 @@ import { HomeIcon, Loader2, PlusCircleIcon } from "lucide-react";
 import BoxShareButton from "@/components/BoxShareButton";
 import Link from "next/link";
 import FileContent from "@/components/content/FileContent";
+import { toast } from "sonner";
+import { containsHtmlElements } from "@/lib/markdown";
 import {
   buildAttachmentMarkdown,
   combineContent,
@@ -29,6 +31,83 @@ import {
 // Removed server-only import
 
 const BOX_LIFETIME_MS = 24 * 60 * 60 * 1000;
+
+function isEditablePasteTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  if (target.isContentEditable) {
+    return true;
+  }
+
+  return Boolean(
+    target.closest(
+      'input, textarea, select, [contenteditable="true"], [contenteditable=""], [contenteditable="plaintext-only"]',
+    ),
+  );
+}
+
+function extensionFromMimeType(mimeType: string) {
+  if (!mimeType) {
+    return "";
+  }
+
+  const mimeExtension = mimeType.split("/")[1]?.split("+")[0];
+  if (!mimeExtension) {
+    return "";
+  }
+
+  return `.${mimeExtension === "jpeg" ? "jpg" : mimeExtension}`;
+}
+
+function normalizeClipboardFile(file: File, index: number, timestamp: number) {
+  const genericClipboardNames = new Set(["image.png", "pasted-image.png"]);
+  if (file.name && !genericClipboardNames.has(file.name.toLowerCase())) {
+    return file;
+  }
+
+  const prefix = file.type.startsWith("image/")
+    ? "pasted-image"
+    : "pasted-file";
+  const extension = extensionFromMimeType(file.type);
+  return new File([file], `${prefix}-${timestamp}-${index}${extension}`, {
+    type: file.type || "application/octet-stream",
+    lastModified: timestamp,
+  });
+}
+
+function getClipboardFiles(clipboardData: DataTransfer) {
+  const rawFiles = new Map<string, File>();
+
+  Array.from(clipboardData.files).forEach((file) => {
+    rawFiles.set(
+      `${file.name}-${file.size}-${file.type}-${file.lastModified}`,
+      file,
+    );
+  });
+
+  Array.from(clipboardData.items).forEach((item) => {
+    if (item.kind !== "file") {
+      return;
+    }
+
+    const file = item.getAsFile();
+    if (!file) {
+      return;
+    }
+
+    rawFiles.set(
+      `${file.name}-${file.size}-${file.type}-${file.lastModified}`,
+      file,
+    );
+  });
+
+  const timestamp = Date.now();
+  return Array.from(rawFiles.values()).map((file, index) =>
+    normalizeClipboardFile(file, index, timestamp),
+  );
+}
 
 function formatRemainingTime(milliseconds: number) {
   if (milliseconds <= 0) {
@@ -81,6 +160,7 @@ export default function BoxContent({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState<number | null>(null);
+  const isSavingRef = useRef(false);
 
   const createdTime = new Date(boxCreatedAt).getTime();
   const expiresTime = createdTime + BOX_LIFETIME_MS;
@@ -89,6 +169,131 @@ export default function BoxContent({
     expiresTime - (currentTime ?? createdTime),
   );
   const remainingPercent = Math.round((timeRemaining / BOX_LIFETIME_MS) * 100);
+
+  const saveContent = useCallback(
+    async (
+      newContent: ContentType[],
+      options?: { showDrawerErrors?: boolean },
+    ) => {
+      const showDrawerErrors = options?.showDrawerErrors ?? true;
+
+      if (newContent.length === 0) {
+        return true;
+      }
+
+      if (isSavingRef.current) {
+        return false;
+      }
+
+      isSavingRef.current = true;
+      setIsSubmitting(true);
+      setSubmitError(null);
+
+      try {
+        const textContentItem = newContent.find((item) => item.type === "text");
+        const imageFiles =
+          newContent.find((item) => item.type === "image")?.files ?? [];
+        const fileFiles =
+          newContent.find((item) => item.type === "file")?.files ?? [];
+        const selectedFiles = [...imageFiles, ...fileFiles];
+        const hasText = Boolean(textContentItem?.data?.trim());
+
+        const uploadedBinaryContent: UploadedBinaryContent[] = [];
+        const failedUploads: Array<{ file: File; error: string }> = [];
+
+        if (selectedFiles.length > 0) {
+          const uploadResults = await Promise.all(
+            selectedFiles.map(async (file) => {
+              try {
+                const uploaded = await uploadBinaryContent({
+                  boxId,
+                  file,
+                  hideContent: hasText,
+                });
+                return { success: true as const, uploaded };
+              } catch (error) {
+                const message =
+                  error instanceof Error
+                    ? error.message
+                    : "Unexpected error occurred";
+                return { success: false as const, file, error: message };
+              }
+            }),
+          );
+
+          uploadResults.forEach((result) => {
+            if (result.success) {
+              uploadedBinaryContent.push(result.uploaded);
+            } else {
+              failedUploads.push({ file: result.file, error: result.error });
+            }
+          });
+
+          if (failedUploads.length > 0) {
+            const errorMessages = failedUploads
+              .map((result) => `${result.file.name}: ${result.error}`)
+              .join(", ");
+            const errorMessage = `Failed to upload: ${errorMessages}`;
+            if (showDrawerErrors) {
+              setSubmitError(errorMessage);
+            }
+            return false;
+          }
+
+          if (!hasText && uploadedBinaryContent.length > 0) {
+            // Files-only flow: keep image/file cards visible in local state.
+            const newContentItems = uploadedBinaryContent.map((item) => ({
+              id: crypto.randomUUID(),
+              content: item.fileUrl,
+              type: item.uploadType,
+              file: item.file,
+            }));
+            setContent((prev) => [...prev, ...newContentItems]);
+          }
+        }
+
+        if (hasText) {
+          const attachmentMarkdown = buildAttachmentMarkdown(
+            uploadedBinaryContent,
+            boxId,
+          );
+          const finalTextContent = combineContent(
+            textContentItem?.data ?? "",
+            attachmentMarkdown,
+          );
+
+          await uploadTextContent({
+            boxId,
+            textContent: finalTextContent,
+            hideContent: false,
+          });
+
+          const newTextContent = {
+            id: crypto.randomUUID(),
+            content: finalTextContent,
+            type: "text" as const,
+          };
+          setContent((prev) => [...prev, newTextContent]);
+        }
+
+        return true;
+      } catch (err) {
+        console.error("Unexpected error saving content:", err);
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : "An unexpected error occurred. Please try again.";
+        if (showDrawerErrors) {
+          setSubmitError(errorMessage);
+        }
+        return false;
+      } finally {
+        isSavingRef.current = false;
+        setIsSubmitting(false);
+      }
+    },
+    [boxId],
+  );
 
   // Initialize content from props
   useEffect(() => {
@@ -116,105 +321,80 @@ export default function BoxContent({
       return;
     }
 
-    setIsSubmitting(true);
-    setSubmitError(null);
-
-    try {
-      const textContentItem = content.find((item) => item.type === "text");
-      const imageFiles =
-        content.find((item) => item.type === "image")?.files ?? [];
-      const fileFiles =
-        content.find((item) => item.type === "file")?.files ?? [];
-      const selectedFiles = [...imageFiles, ...fileFiles];
-      const hasText = Boolean(textContentItem?.data?.trim());
-
-      const uploadedBinaryContent: UploadedBinaryContent[] = [];
-      const failedUploads: Array<{ file: File; error: string }> = [];
-
-      if (selectedFiles.length > 0) {
-        const uploadResults = await Promise.all(
-          selectedFiles.map(async (file) => {
-            try {
-              const uploaded = await uploadBinaryContent({
-                boxId,
-                file,
-                hideContent: hasText,
-              });
-              return { success: true as const, uploaded };
-            } catch (error) {
-              const message =
-                error instanceof Error
-                  ? error.message
-                  : "Unexpected error occurred";
-              return { success: false as const, file, error: message };
-            }
-          }),
-        );
-
-        uploadResults.forEach((result) => {
-          if (result.success) {
-            uploadedBinaryContent.push(result.uploaded);
-          } else {
-            failedUploads.push({ file: result.file, error: result.error });
-          }
-        });
-
-        if (failedUploads.length > 0) {
-          const errorMessages = failedUploads
-            .map((result) => `${result.file.name}: ${result.error}`)
-            .join(", ");
-          setSubmitError(`Failed to upload: ${errorMessages}`);
-          return;
-        }
-
-        if (!hasText && uploadedBinaryContent.length > 0) {
-          // Files-only flow: keep image/file cards visible in local state.
-          const newContentItems = uploadedBinaryContent.map((item) => ({
-            id: crypto.randomUUID(),
-            content: item.fileUrl,
-            type: item.uploadType,
-            file: item.file,
-          }));
-          setContent((prev) => [...prev, ...newContentItems]);
-        }
-      }
-
-      if (hasText) {
-        const attachmentMarkdown = buildAttachmentMarkdown(
-          uploadedBinaryContent,
-          boxId,
-        );
-        const finalTextContent = combineContent(
-          textContentItem?.data ?? "",
-          attachmentMarkdown,
-        );
-
-        await uploadTextContent({
-          boxId,
-          textContent: finalTextContent,
-          hideContent: false,
-        });
-
-        const newTextContent = {
-          id: crypto.randomUUID(),
-          content: finalTextContent,
-          type: "text" as const,
-        };
-        setContent((prev) => [...prev, newTextContent]);
-      }
-
+    const saved = await saveContent(content);
+    if (saved) {
       setIsDrawerOpen(false);
-    } catch (err) {
-      console.error("Unexpected error saving content:", err);
-      const errorMessage =
-        err instanceof Error
-          ? err.message
-          : "An unexpected error occurred. Please try again.";
-      setSubmitError(errorMessage);
-    } finally {
-      setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    const handlePagePaste = async (event: ClipboardEvent) => {
+      if (isDrawerOpen || isSubmitting || isEditablePasteTarget(event.target)) {
+        return;
+      }
+
+      const clipboardData = event.clipboardData;
+      if (!clipboardData) {
+        return;
+      }
+
+      const pastedFiles = getClipboardFiles(clipboardData);
+      const imageFiles = pastedFiles.filter((file) =>
+        file.type.startsWith("image/"),
+      );
+      const fileFiles = pastedFiles.filter(
+        (file) => !file.type.startsWith("image/"),
+      );
+      const textContent = clipboardData.getData("text/plain").trim();
+
+      if (
+        imageFiles.length === 0 &&
+        fileFiles.length === 0 &&
+        textContent.length === 0
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (textContent && containsHtmlElements(textContent)) {
+        toast.error(
+          "HTML elements are not allowed. Use Markdown syntax instead.",
+        );
+        return;
+      }
+
+      const pastedContent: ContentType[] = [];
+      if (imageFiles.length > 0) {
+        pastedContent.push({ type: "image", data: null, files: imageFiles });
+      }
+      if (fileFiles.length > 0) {
+        pastedContent.push({ type: "file", data: null, files: fileFiles });
+      }
+      if (textContent) {
+        pastedContent.push({ type: "text", data: textContent });
+      }
+
+      const pastedItemCount =
+        imageFiles.length + fileFiles.length + (textContent ? 1 : 0);
+      const toastId = toast.loading("Adding pasted content...");
+      const saved = await saveContent(pastedContent, {
+        showDrawerErrors: false,
+      });
+
+      if (saved) {
+        toast.success(
+          `Added ${pastedItemCount} pasted item${pastedItemCount === 1 ? "" : "s"}`,
+          { id: toastId },
+        );
+      } else {
+        toast.error("Could not add pasted content", { id: toastId });
+      }
+    };
+
+    window.addEventListener("paste", handlePagePaste);
+    return () => window.removeEventListener("paste", handlePagePaste);
+  }, [isDrawerOpen, isSubmitting, saveContent]);
 
   const handleDrawerClose = () => {
     setIsDrawerOpen(false);
