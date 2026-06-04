@@ -1,9 +1,16 @@
 import { NextRequest } from "next/server";
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
-import { createClient } from "@supabase/supabase-js";
-import { Database } from "@/utils/supabase/database.types";
-import { containsHtmlElements } from "@/lib/markdown";
+import {
+  createServiceRoleClient,
+  insertTextContent,
+  isBoxContentWriteError,
+  uploadBinaryContent,
+  validateTextContent,
+  type BinaryUploadType,
+} from "@/lib/box-content-write";
+
+export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,19 +33,16 @@ export async function POST(request: NextRequest) {
 
     // Validate fields based on upload type
     if (uploadType === "text") {
-      const trimmedTextContent = textContent?.trim();
-      if (!trimmedTextContent) {
+      try {
+        validateTextContent(textContent ?? "");
+      } catch (error) {
+        if (!isBoxContentWriteError(error)) {
+          throw error;
+        }
+
         return new Response(
-          JSON.stringify({ error: "Missing required field: textContent" }),
-          { status: 400 }
-        );
-      }
-      if (containsHtmlElements(trimmedTextContent)) {
-        return new Response(
-          JSON.stringify({
-            error: "HTML elements are not allowed in markdown content.",
-          }),
-          { status: 400 }
+          JSON.stringify({ error: error.message }),
+          { status: error.status },
         );
       }
     } else if (uploadType === "image" || uploadType === "file") {
@@ -109,83 +113,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create Supabase client with service role key
-    const supabase = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_NEXTJS_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    );
+    const supabase = createServiceRoleClient();
 
     let content;
 
     if (uploadType === "text") {
-      // Handle text content - insert directly into database
-      const { data: textData, error: textError } = await supabase
-        .from("TextContent")
-        .insert({
-          box: boxId,
-          hide_content: hideContent,
-          // TODO: add a content_format field (plain|markdown) for future migration support.
-          content: textContent!.trim(), // Non-null assertion safe due to validation above
-        })
-        .select("id, content, created_at")
-        .single();
-
-      if (textError) {
-        console.error("Error inserting text:", textError);
-        return new Response(
-          JSON.stringify({ error: "Failed to insert text into database" }),
-          { status: 500 }
-        );
-      }
-
-      content = textData;
+      content = await insertTextContent(
+        supabase,
+        boxId,
+        textContent ?? "",
+        hideContent,
+      );
     } else {
-      // Handle image/file content - upload to storage then insert into database
-      // Convert file to Buffer directly (no base64 step!)
-      const buffer = Buffer.from(await file!.arrayBuffer());
-
-      // First, upload to the storage bucket
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from(uploadType === "image" ? "image-content" : "file-content")
-        .upload(`${boxId}/${file!.name}`, buffer, {
-          contentType: file!.type,
-        });
-
-      if (uploadError) {
-        console.error("Error uploading:", uploadError);
-        return new Response(
-          JSON.stringify({ error: "Failed to upload to storage" }),
-          { status: 500 }
-        );
-      }
-
-      // Second, insert into the database
-      const tableName = uploadType === "image" ? "ImageContent" : "FileContent";
-      const { data: contentData, error: contentError } = await supabase
-        .from(tableName as "ImageContent")
-        .insert({
-          box: boxId,
-          content: uploadData.path,
-          hide_content: hideContent,
-        })
-        .select("id, content, created_at")
-        .single();
-
-      if (contentError) {
-        console.error("Error inserting:", contentError);
-        return new Response(
-          JSON.stringify({ error: "Failed to insert into database" }),
-          { status: 500 }
-        );
-      }
-
-      content = contentData;
+      const uploaded = await uploadBinaryContent(
+        supabase,
+        boxId,
+        file!,
+        hideContent,
+        uploadType as BinaryUploadType,
+      );
+      content = uploaded.data;
     }
 
     return new Response(JSON.stringify({ data: content }), {
@@ -193,6 +140,12 @@ export async function POST(request: NextRequest) {
       headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
+    if (isBoxContentWriteError(err)) {
+      return new Response(JSON.stringify({ error: err.message }), {
+        status: err.status,
+      });
+    }
+
     console.error("Error in upload-content API route:", err);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,

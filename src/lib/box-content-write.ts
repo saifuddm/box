@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { containsHtmlElements } from "@/lib/markdown";
-import { Database } from "@/utils/supabase/database.types";
+import type { Database } from "@/utils/supabase/database.types";
 
 type BinaryUploadType = "image" | "file";
 
@@ -16,6 +16,20 @@ interface WriteBoxContentArgs {
   files?: File[];
 }
 
+class BoxContentWriteError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "BoxContentWriteError";
+    this.status = status;
+  }
+}
+
+function isBoxContentWriteError(error: unknown): error is BoxContentWriteError {
+  return error instanceof BoxContentWriteError;
+}
+
 function createServiceRoleClient() {
   return createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,8 +43,42 @@ function createServiceRoleClient() {
   );
 }
 
-function inferBinaryUploadType(file: File): BinaryUploadType {
+function inferBinaryUploadType(file: { type: string }): BinaryUploadType {
   return file.type.startsWith("image/") ? "image" : "file";
+}
+
+function hasTextContent(textContent: string | null | undefined) {
+  return Boolean(textContent?.trim());
+}
+
+function validateTextContent(textContent: string) {
+  const trimmedTextContent = textContent.trim();
+
+  if (!trimmedTextContent) {
+    throw new BoxContentWriteError("Missing required field: textContent", 400);
+  }
+
+  if (containsHtmlElements(trimmedTextContent)) {
+    throw new BoxContentWriteError(
+      "HTML elements are not allowed in markdown content.",
+      400,
+    );
+  }
+
+  return trimmedTextContent;
+}
+
+function getTextContentValidationError(textContent: string) {
+  try {
+    validateTextContent(textContent);
+    return null;
+  } catch (error) {
+    if (isBoxContentWriteError(error) && error.status === 400) {
+      return error.message;
+    }
+
+    throw error;
+  }
 }
 
 function buildAttachmentMarkdown(
@@ -84,15 +132,7 @@ async function insertTextContent(
   textContent: string,
   hideContent: boolean,
 ) {
-  const trimmedTextContent = textContent.trim();
-
-  if (!trimmedTextContent) {
-    throw new Error("Missing required field: textContent");
-  }
-
-  if (containsHtmlElements(trimmedTextContent)) {
-    throw new Error("HTML elements are not allowed in markdown content.");
-  }
+  const trimmedTextContent = validateTextContent(textContent);
 
   const { data, error } = await supabase
     .from("TextContent")
@@ -106,7 +146,7 @@ async function insertTextContent(
 
   if (error) {
     console.error("Error inserting text:", error);
-    throw new Error("Failed to insert text into database");
+    throw new BoxContentWriteError("Failed to insert text into database", 500);
   }
 
   return data;
@@ -117,8 +157,8 @@ async function uploadBinaryContent(
   boxId: string,
   file: File,
   hideContent: boolean,
+  uploadType: BinaryUploadType = inferBinaryUploadType(file),
 ) {
-  const uploadType = inferBinaryUploadType(file);
   const buffer = Buffer.from(await file.arrayBuffer());
 
   const { data: uploadData, error: uploadError } = await supabase.storage
@@ -129,7 +169,7 @@ async function uploadBinaryContent(
 
   if (uploadError) {
     console.error("Error uploading:", uploadError);
-    throw new Error("Failed to upload to storage");
+    throw new BoxContentWriteError("Failed to upload to storage", 500);
   }
 
   if (uploadType === "image") {
@@ -145,7 +185,7 @@ async function uploadBinaryContent(
 
     if (error) {
       console.error("Error inserting image:", error);
-      throw new Error("Failed to insert into database");
+      throw new BoxContentWriteError("Failed to insert into database", 500);
     }
 
     return {
@@ -168,7 +208,7 @@ async function uploadBinaryContent(
 
   if (error) {
     console.error("Error inserting file:", error);
-    throw new Error("Failed to insert into database");
+    throw new BoxContentWriteError("Failed to insert into database", 500);
   }
 
   return {
@@ -186,7 +226,7 @@ async function writeBoxContent({
 }: WriteBoxContentArgs) {
   const supabase = createServiceRoleClient();
   const trimmedTextContent = textContent.trim();
-  const hasText = Boolean(trimmedTextContent);
+  const hasText = hasTextContent(trimmedTextContent);
   const uploadedBinaryContent: UploadedBinaryContent[] = [];
 
   for (const file of files) {
@@ -203,16 +243,27 @@ async function writeBoxContent({
       uploadedBinaryContent,
       boxId,
     );
-    const finalTextContent = combineContent(trimmedTextContent, attachmentMarkdown);
+    const finalTextContent = combineContent(
+      trimmedTextContent,
+      attachmentMarkdown,
+    );
 
     await insertTextContent(supabase, boxId, finalTextContent, false);
   }
 }
 
 export {
+  BoxContentWriteError,
+  buildAttachmentMarkdown,
+  combineContent,
   createServiceRoleClient,
+  getTextContentValidationError,
+  hasTextContent,
   inferBinaryUploadType,
   insertTextContent,
+  isBoxContentWriteError,
   uploadBinaryContent,
+  validateTextContent,
   writeBoxContent,
 };
+export type { BinaryUploadType, UploadedBinaryContent };

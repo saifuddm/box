@@ -17,7 +17,10 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 import { DrawerFooter } from "@/components/ui/drawer";
-import { containsHtmlElements } from "@/lib/markdown";
+import {
+  getTextContentValidationError,
+  inferBinaryUploadType,
+} from "@/lib/box-content-write";
 
 interface FileType {
   file: File;
@@ -104,7 +107,7 @@ function InsertContentComponent({
 
       Array.from(files).forEach((file) => {
         const previewUrl = URL.createObjectURL(file);
-        if (file.type.startsWith("image/")) {
+        if (inferBinaryUploadType(file) === "image") {
           const newImageFile: FileType = {
             file,
             preview: previewUrl,
@@ -183,7 +186,7 @@ function InsertContentComponent({
 
     const trimmedTextContent = textContent.trim();
     if (trimmedTextContent) {
-      if (containsHtmlElements(trimmedTextContent)) {
+      if (getTextContentValidationError(trimmedTextContent)) {
         setTextValidationError(
           "HTML elements are not allowed. Use Markdown syntax instead.",
         );

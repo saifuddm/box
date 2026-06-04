@@ -1,4 +1,9 @@
-type BinaryUploadType = "image" | "file";
+import {
+  buildAttachmentMarkdown,
+  combineContent,
+  inferBinaryUploadType,
+  type UploadedBinaryContent as UploadedBinaryContentDescriptor,
+} from "@/lib/box-content-write";
 
 interface UploadBinaryContentArgs {
   boxId: string;
@@ -12,15 +17,9 @@ interface UploadTextContentArgs {
   hideContent?: boolean;
 }
 
-interface UploadedBinaryContent {
+interface UploadedBinaryContent extends UploadedBinaryContentDescriptor {
   file: File;
-  uploadType: BinaryUploadType;
-  storagePath: string;
   fileUrl: string;
-}
-
-function inferBinaryUploadType(file: File): BinaryUploadType {
-  return file.type.startsWith("image/") ? "image" : "file";
 }
 
 function parseApiError(rawBody: string, fallback: string) {
@@ -68,6 +67,7 @@ async function uploadBinaryContent({
 
   return {
     file,
+    fileName: file.name,
     uploadType,
     storagePath,
     fileUrl: URL.createObjectURL(file),
@@ -94,51 +94,6 @@ async function uploadTextContent({
     const rawBody = await response.text();
     throw new Error(parseApiError(rawBody, "Text upload failed"));
   }
-}
-
-function buildAttachmentMarkdown(
-  uploadedBinaryContent: UploadedBinaryContent[],
-  boxId: string
-) {
-  const imageLines = uploadedBinaryContent
-    .filter((item) => item.uploadType === "image")
-    .map((item) => {
-      const query = new URLSearchParams({
-        boxId,
-        path: item.storagePath,
-        uploadType: item.uploadType,
-      });
-      return `![${item.file.name}](/api/storage-content?${query.toString()})`;
-    });
-
-  const fileLines = uploadedBinaryContent
-    .filter((item) => item.uploadType === "file")
-    .map((item) => {
-      const query = new URLSearchParams({
-        boxId,
-        path: item.storagePath,
-        uploadType: item.uploadType,
-      });
-      return `[${item.file.name}](/api/storage-content?${query.toString()})`;
-    });
-
-  const lines = [...imageLines, ...fileLines];
-  if (lines.length === 0) {
-    return "";
-  }
-
-  return `## Attachments\n\n${lines.join("\n")}`;
-}
-
-function combineContent(textContent: string, attachmentMarkdown: string) {
-  const trimmedText = textContent.trim();
-  if (!trimmedText) {
-    return attachmentMarkdown;
-  }
-  if (!attachmentMarkdown) {
-    return trimmedText;
-  }
-  return `${trimmedText}\n\n${attachmentMarkdown}`;
 }
 
 export {

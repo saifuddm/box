@@ -6,7 +6,10 @@ import {
   generateBoxName,
   generatePassword,
 } from "@/lib/quick-box-names";
-import { writeBoxContent } from "@/lib/box-content-write";
+import {
+  isBoxContentWriteError,
+  writeBoxContent,
+} from "@/lib/box-content-write";
 
 export const runtime = "nodejs";
 
@@ -152,9 +155,11 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error("Error in quick-box API route:", error);
-    const message = error instanceof Error ? error.message : "Internal server error";
-    const status = message.includes("HTML elements are not allowed") ? 400 : 500;
+    if (isBoxContentWriteError(error)) {
+      return jsonResponse({ error: error.message }, error.status);
+    }
 
-    return jsonResponse({ error: message }, status);
+    const message = error instanceof Error ? error.message : "Internal server error";
+    return jsonResponse({ error: message }, 500);
   }
 }

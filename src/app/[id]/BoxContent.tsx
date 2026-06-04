@@ -32,7 +32,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import FileContent from "@/components/content/FileContent";
 import { toast } from "sonner";
-import { containsHtmlElements } from "@/lib/markdown";
+import {
+  getTextContentValidationError,
+  hasTextContent,
+  inferBinaryUploadType,
+} from "@/lib/box-content-write";
 import {
   buildAttachmentMarkdown,
   combineContent,
@@ -40,7 +44,6 @@ import {
   uploadTextContent,
   type UploadedBinaryContent,
 } from "@/utils/BoxContentHelper";
-// Removed server-only import
 
 const BOX_LIFETIME_MS = 24 * 60 * 60 * 1000;
 
@@ -83,9 +86,8 @@ function normalizeClipboardFile(file: File, index: number, timestamp: number) {
     return file;
   }
 
-  const prefix = file.type.startsWith("image/")
-    ? "pasted-image"
-    : "pasted-file";
+  const prefix =
+    inferBinaryUploadType(file) === "image" ? "pasted-image" : "pasted-file";
   const extension = extensionFromMimeType(file.type);
   return new File([file], `${prefix}-${timestamp}-${index}${extension}`, {
     type: file.type || "application/octet-stream",
@@ -217,7 +219,7 @@ export default function BoxContent({
         const fileFiles =
           newContent.find((item) => item.type === "file")?.files ?? [];
         const selectedFiles = [...imageFiles, ...fileFiles];
-        const hasText = Boolean(textContentItem?.data?.trim());
+        const hasText = hasTextContent(textContentItem?.data);
 
         const uploadedBinaryContent: UploadedBinaryContent[] = [];
         const failedUploads: Array<{ file: File; error: string }> = [];
@@ -360,11 +362,11 @@ export default function BoxContent({
       }
 
       const pastedFiles = getClipboardFiles(clipboardData);
-      const imageFiles = pastedFiles.filter((file) =>
-        file.type.startsWith("image/"),
+      const imageFiles = pastedFiles.filter(
+        (file) => inferBinaryUploadType(file) === "image",
       );
       const fileFiles = pastedFiles.filter(
-        (file) => !file.type.startsWith("image/"),
+        (file) => inferBinaryUploadType(file) === "file",
       );
       const textContent = clipboardData.getData("text/plain").trim();
 
@@ -378,7 +380,7 @@ export default function BoxContent({
 
       event.preventDefault();
 
-      if (textContent && containsHtmlElements(textContent)) {
+      if (textContent && getTextContentValidationError(textContent)) {
         toast.error(
           "HTML elements are not allowed. Use Markdown syntax instead.",
         );
