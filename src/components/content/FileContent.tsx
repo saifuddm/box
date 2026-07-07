@@ -23,6 +23,17 @@ function FileContent({
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
+  // Supabase signed URLs serve HTML as text/plain, so open HTML files through
+  // our proxy route, which returns them rendered inside a sandboxed origin.
+  const openUrl =
+    fromSupabase && /\.html?$/i.test(alt)
+      ? `/api/storage-content?${new URLSearchParams({
+          boxId,
+          path: src,
+          uploadType: "file",
+        }).toString()}`
+      : sourceUrl;
+
   const getSignedUrl = useCallback(async () => {
     try {
       const response = await fetch("/api/storage-content", {
@@ -88,7 +99,7 @@ function FileContent({
         ) : (
           <div className="relative w-full h-auto">
             <a
-              href={sourceUrl}
+              href={openUrl}
               target="_blank"
               className="hover:text-primary transition-colors underline underline-offset-4"
             >

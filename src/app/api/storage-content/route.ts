@@ -113,6 +113,31 @@ function validatePathForBox(path: string, boxId: string) {
   return path.startsWith(`${boxId}/`);
 }
 
+function isHtmlPath(path: string) {
+  return /\.html?$/i.test(path);
+}
+
+// Supabase Storage serves HTML objects as text/plain with nosniff on the shared
+// *.supabase.co domain, so HTML files must be proxied through our own origin to
+// render. The sandbox CSP (no allow-same-origin) puts the document in an opaque
+// origin so uploaded HTML cannot use the viewer's cookies against our API.
+async function proxyHtmlContent(signedUrl: string) {
+  const upstream = await fetch(signedUrl);
+  if (!upstream.ok) {
+    return jsonResponse({ error: "Failed to fetch file content" }, 502);
+  }
+
+  return new Response(upstream.body, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Content-Security-Policy": "sandbox allow-scripts",
+      "X-Content-Type-Options": "nosniff",
+      "Cache-Control": "private, no-store",
+    },
+  });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -168,6 +193,10 @@ export async function GET(request: NextRequest) {
     const signedResult = await fetchSignedUrl(path, uploadType, authResult.token);
     if (!signedResult.ok) {
       return signedResult.response;
+    }
+
+    if (isHtmlPath(path)) {
+      return proxyHtmlContent(signedResult.signedUrl);
     }
 
     return Response.redirect(signedResult.signedUrl, 302);
